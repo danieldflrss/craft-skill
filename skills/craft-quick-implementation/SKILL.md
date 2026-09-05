@@ -20,7 +20,9 @@ Ratchet: if hidden complexity appears mid-task, move up to the heavier skill. Ne
 ## Rule selection
 
 Read `../engineering-rules/SKILL.md` for the index. Load the core set below, then add
-conditionals only when their trigger holds. Never load more than eight rules.
+conditionals only when their trigger holds. Never load more than eight rules. If the core
+set plus the conditionals whose triggers hold would exceed eight, the task spans more than
+one design pass: narrow it to a single component and run this skill again for the next.
 
 **Core — read all of these:**
 
