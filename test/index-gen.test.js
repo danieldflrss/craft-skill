@@ -48,11 +48,15 @@ test('un rule cuyo name no casa con el fichero lanza error', async () => {
   await assert.rejects(() => generateIndexTable(rules), /does not match filename/);
 });
 
-test('una barra vertical en applies-when no rompe la tabla', async () => {
+// La asercion separa por pipes NO escapados. Un `\|` sigue siendo un pipe para
+// String.split(), asi que contar cortes ingenuos mide markdown mal: la barra invertida
+// solo significa algo al renderizar. Cuatro segmentos = dos celdas reales.
+test('una barra vertical en applies-when se escapa y no rompe la tabla', async () => {
   const { rules } = await fixture();
   await fs.writeFile(path.join(rules, 'pipes.md'), '---\nname: pipes\napplies-when: A | B\n---\n');
   const row = (await generateIndexTable(rules)).split('\n').find((l) => l.includes('`pipes`'));
-  assert.equal(row.split('|').length, 4);
+  assert.ok(row.includes('A \\| B'));
+  assert.equal(row.split(/(?<!\\)\|/).length, 4);
 });
 
 test('sin marcadores lanza un error accionable', async () => {
