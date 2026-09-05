@@ -1,23 +1,36 @@
 export const START = '<!-- craftkit:start -->';
 export const END = '<!-- craftkit:end -->';
 
+// Localiza el bloque gestionado por el ULTIMO par START/END. Con indexOf ingenuo, una
+// mencion del marcador en la prosa del usuario -- o un START huerfano de un archivo
+// editado a mano -- se emparejaba con el END real y borraba EN SILENCIO todo lo que
+// hubiera en medio. AGENTS.md es del usuario: ante un archivo malformado preferimos no
+// encontrar bloque (y anadir uno nuevo) antes que cortar por donde no es.
+function findBlock(content) {
+  const end = content.lastIndexOf(END);
+  if (end === -1) return null;
+  const start = content.lastIndexOf(START, end);
+  if (start === -1) return null;
+  return { start, end: end + END.length };
+}
+
 export function upsertBlock(content, body) {
   const block = `${START}\n${body}\n${END}`;
-  const s = content.indexOf(START);
-  const e = content.indexOf(END);
-  if (s !== -1 && e !== -1) {
-    return content.slice(0, s) + block + content.slice(e + END.length);
-  }
+  const found = findBlock(content);
+  if (found) return content.slice(0, found.start) + block + content.slice(found.end);
   if (content.trim() === '') return block + '\n';
   const separator = content.endsWith('\n\n') ? '' : content.endsWith('\n') ? '\n' : '\n\n';
   return content + separator + block + '\n';
 }
 
 export function removeBlock(content) {
-  const s = content.indexOf(START);
-  const e = content.indexOf(END);
-  if (s === -1 || e === -1) return content;
-  const out = (content.slice(0, s) + content.slice(e + END.length)).replace(/\n{3,}/g, '\n\n');
+  const found = findBlock(content);
+  if (!found) return content;
+  // La normalizacion de saltos se aplica SOLO a la juntura. Un replace sobre todo el
+  // archivo colapsaria lineas en blanco que el usuario puso a proposito lejos del bloque.
+  const before = content.slice(0, found.start).replace(/\n+$/, '');
+  const after = content.slice(found.end).replace(/^\n+/, '');
+  const out = before === '' ? after : `${before}\n${after}`;
   return out.trim() === '' ? '' : out;
 }
 

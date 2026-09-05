@@ -30,6 +30,25 @@ test('removeBlock sin bloque devuelve el original', () => {
   assert.equal(removeBlock('# P\n'), '# P\n');
 });
 
+// Estos tres cubren el borrado silencioso de contenido del usuario. Sin ellos, los
+// demas pasan igual con la version ingenua basada en indexOf.
+test('ida y vuelta byte a byte, preservando las lineas en blanco del usuario', () => {
+  const original = '# Proyecto\n\n\n\n## Notas\n\ntexto\n';
+  assert.equal(removeBlock(upsertBlock(original, 'X')), original);
+});
+
+test('una mencion del marcador en la prosa no destruye el contenido del usuario', () => {
+  const original = `Usamos ${START} para delimitar.\n\nparrafo del usuario\n`;
+  const out = upsertBlock(original, 'X');
+  assert.ok(out.includes('parrafo del usuario'));
+  assert.ok(out.includes('Usamos'));
+});
+
+test('un END antes que un START deja el archivo intacto', () => {
+  const original = `${END}\ntexto\n${START}\n`;
+  assert.equal(removeBlock(original), original);
+});
+
 test('renderBlock lista los skills y la ruta', () => {
   const body = renderBlock(['craft-architect', 'engineering-rules'], '.claude/skills');
   assert.ok(body.includes('.claude/skills'));
