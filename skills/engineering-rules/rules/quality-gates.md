@@ -29,10 +29,10 @@ already trusts everyone else's judgment.
 
 ```ts
 // Don't — the failure is swallowed; CI reports success either way
-const scripts = { test: 'node --test || true' };
+const swallowed = { test: 'node --test || true' };
 
 // Do — a failing gate fails the command, and CI blocks the merge
-const scripts = { test: 'node --test' };
+const enforced = { test: 'node --test' };
 ```
 
 ## Smells

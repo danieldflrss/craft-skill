@@ -34,17 +34,19 @@ attention on green checkmarks that mean nothing.
 ## Do / Don't
 
 ```ts
-// Don't — asserts on internals; breaks on every refactor
-let called = false;
-const orig = account.getBalance;
-account.getBalance = () => (called = true, orig());
-service.withdraw(account, 100);
-if (!called) throw new Error('Expected call');
+// Don't — asserts a collaborator was called; passes even if the balance is wrong
+const calls: string[] = [];
+const audit = { record: (event: string) => calls.push(event) };
+service.withdraw(richAccount, 100, audit);
+if (calls.length !== 1) throw new Error('expected audit.record to be called');
 
-// Do — asserts on observable behavior
-const acct = new Account({ balance: 50 });
-try { service.withdraw(acct, 100); throw new Error('Expected error'); }
-catch (err) { if (!(err instanceof InsufficientBalanceError)) throw err; }
+// Do — asserts what the caller actually observes
+try {
+  service.withdraw(poorAccount, 100, audit);
+  throw new Error('expected an overdraft to be rejected');
+} catch (err) {
+  if (!(err instanceof InsufficientBalanceError)) throw err;
+}
 ```
 
 ## Smells
