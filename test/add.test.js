@@ -56,3 +56,9 @@ test('addSkill crea el directorio con su SKILL.md', async () => {
   assert.ok(text.includes('name: craft-migration'));
   assert.ok(!text.includes('SKILL_NAME'));
 });
+
+test('addSkill no sobrescribe un skill existente', async () => {
+  const root = await pkg();
+  await addSkill({ packageRoot: root, name: 'craft-migration' });
+  await assert.rejects(() => addSkill({ packageRoot: root, name: 'craft-migration' }), /already exists/i);
+});

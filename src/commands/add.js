@@ -22,6 +22,9 @@ export async function addRule({ packageRoot, name }) {
 
   const template = await fs.readFile(path.join(packageRoot, 'templates', 'rule.md'), 'utf8');
   await fs.writeFile(file, template.replaceAll('RULE_NAME', name).replaceAll('RULE_TITLE', title(name)), 'utf8');
+  // Si esto falla, el archivo de la rule ya escrito arriba queda en disco y el indice
+  // no se regenera: es un fallo intencionado (fail-loud), no una limpieza a medias.
+  // Solo ocurre cuando a SKILL.md ya le faltan los marcadores <!-- craftkit:rules:* -->.
   await syncIndex(path.join(packageRoot, 'skills', 'engineering-rules', 'SKILL.md'), rulesDir);
   return { file };
 }
