@@ -1,0 +1,12 @@
+{
+  "name": "craftkit",
+  "version": "0.1.0",
+  "description": "Engineering skills and rules for coding agents",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "craftkit": "src/cli.js" },
+  "engines": { "node": ">=20.0.0" },
+  "files": ["src", "skills", "templates", "README.md"],
+  "scripts": { "test": "node --test test/**/*.test.js" },
+  "dependencies": { "@clack/prompts": "^0.7.0" }
+}
