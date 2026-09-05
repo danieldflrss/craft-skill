@@ -27,18 +27,23 @@ rules whose `applies-when` condition actually holds for the code in front of it.
 | `architecture` | Deciding how modules, services, or layers fit together. |
 | `clean-architecture` | The codebase has business rules worth protecting from frameworks and I/O. |
 | `clean-code` | Any code you write or modify. |
+| `code-review` | Reviewing someone else's change, or preparing your own for review. |
 | `concurrency` | Two things can run at once: threads, async tasks, workers, or multiple instances of the service. |
 | `ddd` | The domain has rules and vocabulary that non-programmers argue about. |
+| `dependency-management` | Adding, upgrading, or removing a third-party dependency. |
 | `design-patterns` | You recognize a recurring structural problem and want a known solution. |
+| `engineering-workflow` | Planning how a change gets from idea to production. |
 | `error-handling` | The code crosses a boundary: I/O, network, parsing, or user input. |
 | `hexagonal-architecture` | You need to exercise the domain without infrastructure, or to swap an external system. |
 | `language-idioms` | Writing in a language whose local conventions you have not confirmed in this repository. |
 | `observability` | The code runs anywhere you cannot attach a debugger. |
 | `performance` | There is a measured performance problem, or you are choosing a data-access pattern. |
+| `quality-gates` | Deciding whether a change is done, or setting up CI. |
 | `refactoring` | The code's current shape resists the change you need, or a feature left the design worse than it found it. |
 | `security` | The code handles external input, credentials, personal data, or authorization decisions. |
 | `simplicity-and-yagni` | You are about to add an abstraction, a configuration option, or a capability nobody asked for. |
 | `solid` | The design uses classes, modules, or interfaces with more than one collaborator. |
+| `testing` | Implementing any change in behavior. |
 <!-- craftkit:rules:end -->
 
 ## Adding a rule
