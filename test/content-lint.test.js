@@ -24,8 +24,7 @@ test('cada SKILL.md tiene frontmatter válido y coherente con su directorio', as
   }
 });
 
-// se habilita en la Task 16
-test.skip('los cinco skills de flujo llevan prefijo craft-', async () => {
+test('los cinco skills de flujo llevan prefijo craft-', async () => {
   const names = await dirs(SKILLS);
   assert.equal(names.filter((n) => n.startsWith('craft-')).length, 5);
   assert.ok(names.includes('engineering-rules'));
