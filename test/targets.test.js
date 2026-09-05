@@ -32,3 +32,16 @@ test('resolveDest expande ~ contra home y lo relativo contra cwd', () => {
   assert.equal(resolveDest('~/.claude/skills', ctx), path.join('/home/u', '.claude/skills'));
   assert.equal(resolveDest('.claude/skills', ctx), path.join('/proj', '.claude/skills'));
 });
+
+test('resolveDest no anida rutas absolutas ni pierde un ~ suelto', () => {
+  const ctx = { cwd: path.join('/proj'), home: path.join('/home/u') };
+  assert.equal(resolveDest('~', ctx), path.join('/home/u'));
+  assert.equal(resolveDest(path.resolve('/etc/foo'), ctx), path.resolve('/etc/foo'));
+});
+
+test('la tabla expone exactamente las rutas documentadas de cada agente', () => {
+  assert.deepEqual(pathsFor('claude-code', 'project'), ['.claude/skills']);
+  assert.deepEqual(pathsFor('opencode', 'project'), ['.agents/skills', '.claude/skills', '.opencode/skills']);
+  assert.deepEqual(pathsFor('codex', 'global'), ['~/.agents/skills', '~/.codex/skills']);
+  assert.deepEqual(pathsFor('cursor', 'global'), []);
+});

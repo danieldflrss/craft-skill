@@ -55,6 +55,13 @@ export function candidatePaths(ids, scope) {
   return [...set].sort();
 }
 
+// Un `~` suelto y las rutas absolutas se resuelven antes de llegar a `path.join`:
+// `path.join` no re-enraiza, asi que `join(cwd, '/etc/foo')` daria `cwd/etc/foo`,
+// una corrupcion silenciosa. Ninguna entrada de AGENTS los usa hoy; el guardado
+// existe porque esta funcion es la unica resolucion de rutas del paquete.
 export function resolveDest(p, { cwd, home }) {
-  return p.startsWith('~/') ? path.join(home, p.slice(2)) : path.join(cwd, p);
+  if (p === '~') return home;
+  if (p.startsWith('~/')) return path.join(home, p.slice(2));
+  if (path.isAbsolute(p)) return path.normalize(p);
+  return path.join(cwd, p);
 }
