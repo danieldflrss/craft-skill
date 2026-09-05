@@ -35,5 +35,14 @@ export async function materializeSkill(srcDir, destDir, { mode = 'auto' } = {}) 
       if (err.code === 'EEXIST') throw err;
     }
   }
-  return { mode: 'copy', files: await copyDir(srcDir, destDir) };
+  // Si la copia falla a mitad, el destino queda incompleto y el guardado EEXIST de
+  // arriba haria fallar el siguiente intento, obligando al usuario a --force para
+  // recuperarse de un fallo que no provoco. Limpiamos y relanzamos el error original:
+  // o el destino existe completo, o no existe.
+  try {
+    return { mode: 'copy', files: await copyDir(srcDir, destDir) };
+  } catch (err) {
+    await fs.rm(destDir, { recursive: true, force: true }).catch(() => {});
+    throw err;
+  }
 }

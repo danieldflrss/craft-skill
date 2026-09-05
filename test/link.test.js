@@ -1,18 +1,25 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { copyDir, materializeSkill } from '../src/link.js';
 
+const roots = [];
+
 async function fixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'craftkit-link-'));
+  roots.push(root);
   const src = path.join(root, 'src-skill');
   await fs.mkdir(path.join(src, 'rules'), { recursive: true });
   await fs.writeFile(path.join(src, 'SKILL.md'), '# skill\n');
   await fs.writeFile(path.join(src, 'rules', 'solid.md'), '# solid\n');
   return { root, src };
 }
+
+after(async () => {
+  for (const root of roots) await fs.rm(root, { recursive: true, force: true });
+});
 
 test('copyDir replica el árbol y devuelve rutas relativas', async () => {
   const { root, src } = await fixture();
@@ -36,6 +43,16 @@ test('modo auto deja el contenido legible sea cual sea el mecanismo', async () =
   assert.ok(['symlink', 'junction', 'copy'].includes(res.mode));
   assert.equal(await fs.readFile(path.join(dest, 'SKILL.md'), 'utf8'), '# skill\n');
   if (res.mode !== 'copy') assert.deepEqual(res.files, []);
+});
+
+// `copyDir` crea el destino ANTES de leer el origen, asi que un origen inexistente
+// deja un directorio vacio a medias. Es el fallo mas simple de provocar de forma
+// portable, y ejercita exactamente la limpieza.
+test('una copia fallida no deja el destino a medias', async () => {
+  const { root } = await fixture();
+  const dest = path.join(root, 'd5');
+  await assert.rejects(() => materializeSkill(path.join(root, 'no-existe'), dest, { mode: 'copy' }));
+  assert.equal(await fs.lstat(dest).catch(() => null), null);
 });
 
 test('destino ya existente lanza EEXIST', async () => {
