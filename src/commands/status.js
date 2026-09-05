@@ -20,7 +20,7 @@ export async function status(ctx) {
       scope: manifest.scope,
       craftkitVersion: manifest.craftkitVersion,
       agents: manifest.agents ?? [],
-      skills: manifest.entries.map((e) => ({ name: e.skill, mode: e.mode })),
+      skills: (manifest.entries ?? []).map((e) => ({ name: e.skill, mode: e.mode })),
     });
   }
   return rows;

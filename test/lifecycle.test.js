@@ -6,6 +6,7 @@ import path from 'node:path';
 import { install } from '../src/commands/install.js';
 import { status } from '../src/commands/status.js';
 import { uninstall } from '../src/commands/uninstall.js';
+import { MANIFEST_NAME } from '../src/manifest.js';
 
 const roots = [];
 
@@ -38,6 +39,18 @@ test('status sobre un proyecto limpio devuelve lista vacía', async () => {
   assert.deepEqual(await status(await env()), []);
 });
 
+test('status no revienta con un manifiesto sin "entries"', async () => {
+  const ctx = await env();
+  await install({ ...ctx, agents: ['claude-code'], mode: 'copy' });
+  const dest = path.join(ctx.cwd, '.claude', 'skills');
+  const manifestPath = path.join(dest, MANIFEST_NAME);
+  const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  delete manifest.entries;
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+  const rows = await status(ctx);
+  assert.deepEqual(rows[0].skills, []);
+});
+
 test('uninstall borra lo instalado y limpia AGENTS.md', async () => {
   const ctx = await env();
   await fs.writeFile(path.join(ctx.cwd, 'AGENTS.md'), '# Mi proyecto\n');
@@ -57,4 +70,22 @@ test('uninstall no toca archivos ajenos en el mismo directorio', async () => {
   await fs.writeFile(path.join(intruso, 'SKILL.md'), 'mio');
   await uninstall(ctx);
   assert.equal(await fs.readFile(path.join(intruso, 'SKILL.md'), 'utf8'), 'mio');
+});
+
+test('una entrada de manifiesto con nombre invalido ("..") no escapa del directorio de skills', async () => {
+  const ctx = await env();
+  await install({ ...ctx, agents: ['claude-code'], mode: 'copy' });
+  const dest = path.join(ctx.cwd, '.claude', 'skills');
+  const centinela = path.join(ctx.cwd, '.claude', 'settings.json');
+  await fs.writeFile(centinela, '{}');
+
+  const manifestPath = path.join(dest, MANIFEST_NAME);
+  const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  manifest.entries.push({ skill: '..', mode: 'copy' });
+  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+
+  await uninstall(ctx);
+
+  assert.ok(await fs.stat(path.join(ctx.cwd, '.claude')), 'el directorio padre debe seguir existiendo');
+  assert.equal(await fs.readFile(centinela, 'utf8'), '{}');
 });

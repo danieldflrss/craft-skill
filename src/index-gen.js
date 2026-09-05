@@ -35,6 +35,13 @@ export async function syncIndex(skillMdPath, rulesDir) {
   if (s === -1 || e === -1) {
     throw new Error(`${skillMdPath}: missing ${RULES_START} / ${RULES_END} markers`);
   }
+  // agentsmd.js ya valida esto en su propio formato; aqui hacia falta lo mismo: sin
+  // comprobar el orden, un archivo malformado (END antes que START, o un START huerfano
+  // seguido de un END mas antiguo) producia un slice silenciosamente mal formado en vez
+  // de un error legible.
+  if (e < s) {
+    throw new Error(`${skillMdPath}: ${RULES_END} appears before ${RULES_START}`);
+  }
   const table = await generateIndexTable(rulesDir);
   const next = content.slice(0, s) + `${RULES_START}\n${table}\n` + content.slice(e);
   await fs.writeFile(skillMdPath, next, 'utf8');

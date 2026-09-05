@@ -19,7 +19,7 @@ Para uso no interactivo (scripts, CI, o para saltarse las preguntas):
 
 | Flag | Efecto |
 | --- | --- |
-| `--global` | Instala en el directorio global del agente (p. ej. `~/.claude/skills`). |
+| `--global` | Instala en el directorio global del agente (p. ej. `~/.claude/skills`). **El bloque gestionado de `AGENTS.md` se escribe igualmente en el directorio actual** — si lanzas `--global` desde un repositorio, ese repositorio (puede que no tenga nada que ver con lo que quieres cubrir) es quien recibe el bloque. |
 | `--local` | Instala en el proyecto actual (p. ej. `.claude/skills`). |
 | `--agents <lista>` | Agentes a cubrir, separados por comas (`claude-code,opencode`). Obligatorio si no hay TTY o si se pasa `--yes`. |
 | `--skills <lista>` | Subconjunto de skills a instalar, separados por comas. Por defecto, todos. |
@@ -71,6 +71,12 @@ ya sabe qué reglas leer sin abrir el índice.
 
 ## Extender: añadir reglas y skills
 
+`add-rule` y `add-skill` escriben dentro de `packageRoot` (la raíz del paquete tal como lo ve
+`craftkit`), así que solo tienen sentido sobre un **checkout clonado de craftkit**, no sobre una
+invocación vía `npx`: bajo `npx`, `packageRoot` es un directorio de caché transitorio que
+desaparece; como dependencia de proyecto sería `node_modules`, que la siguiente instalación
+borra. Clona el repositorio y ejecuta los comandos ahí:
+
 ```bash
 npx craftkit add-rule <nombre>
 npx craftkit add-skill <nombre>
@@ -80,8 +86,14 @@ npx craftkit add-skill <nombre>
 **regenera automáticamente** la tabla del índice en `engineering-rules/SKILL.md`. `add-skill`
 crea `skills/<nombre>/SKILL.md` a partir de su plantilla.
 
+Tras añadir una regla o un skill, vuelve a ejecutar `craftkit install` para llevar el cambio a
+donde lo lean tus agentes (si ya tienes una instalación enlazada por symlink al checkout, la
+recoge automáticamente sin reinstalar).
+
 El índice de reglas nunca se edita a mano: se regenera siempre a partir de los archivos en
-`rules/`, así que no puede desincronizarse del contenido real.
+`rules/` mediante `add-rule` (o `syncIndex`, ver `src/index-gen.js`). Eso mantiene el índice
+alineado *si siempre pasa por ahí* — como cualquier archivo generado, puede desincronizarse si
+alguien edita `engineering-rules/SKILL.md` a mano en vez de regenerarlo (ver `AGENTS.md`).
 
 ## Otros comandos
 

@@ -66,6 +66,13 @@ test('sin marcadores lanza un error accionable', async () => {
   await assert.rejects(() => syncIndex(skillMd, rules), /craftkit:rules:start/);
 });
 
+test('el marcador de fin antes que el de inicio lanza un error en vez de mangled output', async () => {
+  const { root, rules } = await fixture();
+  const skillMd = path.join(root, 'invertido.md');
+  await fs.writeFile(skillMd, `# Rules\n\n${RULES_END}\nviejo\n${RULES_START}\nCola.\n`);
+  await assert.rejects(() => syncIndex(skillMd, rules), /appears before/);
+});
+
 test('un rule sin applies-when lanza error', async () => {
   const { rules } = await fixture();
   await fs.writeFile(path.join(rules, 'roto.md'), '---\nname: roto\n---\n# Roto\n');

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import fs from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { agentIds } from './targets.js';
 import { planInstall, install } from './commands/install.js';
 import { status } from './commands/status.js';
@@ -31,8 +32,15 @@ export function parseArgs(argv) {
     else if (arg === '--force') flags.force = true;
     else if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--yes' || arg === '-y') flags.yes = true;
-    else if (!arg.startsWith('-')) flags.name = arg;
-    else throw new Error(`Unknown flag: ${arg}`);
+    else if (!arg.startsWith('-')) {
+      // Un positional suelto solo tiene sentido para add-rule/add-skill (el nombre a
+      // crear). Para el resto de comandos absorberlo en silencio como flags.name dejaba
+      // pasar typos como `craftkit install typo` sin ningun aviso.
+      if (command !== 'add-rule' && command !== 'add-skill') {
+        throw new Error(`Unexpected argument: ${arg}`);
+      }
+      flags.name = arg;
+    } else throw new Error(`Unknown flag: ${arg}`);
   }
   return { command, flags };
 }
@@ -86,9 +94,32 @@ async function main(argv) {
     // para poder cambiar la seleccion en la misma operacion.
     const rows = await status(ctx);
     if (rows.length === 0) throw new Error('craftkit no esta instalado aqui; usa install.');
-    agents = agents ?? [...new Set(rows.flatMap((r) => r.agents))];
+
+    // status() barre proyecto y global en una sola pasada por diseno. Si hay filas en
+    // ambos ambitos y no se nos dijo cual, actualizar "el primero que salga" borraria
+    // el otro sin avisar. Con --local/--global explicito nos quedamos solo con esas
+    // filas, para no tocar el ambito que el usuario no pidio.
+    const scopes = new Set(rows.map((r) => r.scope));
+    if (!scope && scopes.size > 1) {
+      throw new Error(
+        'craftkit esta instalado en mas de un ambito aqui (proyecto y global); ' +
+        'pasa --local o --global explicitamente para indicar cual actualizar.',
+      );
+    }
     scope = scope ?? rows[0].scope;
-    await uninstall(ctx);
+    const scopedRows = rows.filter((r) => r.scope === scope);
+    if (scopedRows.length === 0) throw new Error(`craftkit no esta instalado en ambito "${scope}" aqui.`);
+
+    agents = agents ?? [...new Set(scopedRows.flatMap((r) => r.agents))];
+    // Un array vacio es truthy: sin esta comprobacion, un manifiesto sin "agents"
+    // pasaba la guarda de abajo, el resolvedor devolvia cero destinos, y llegabamos a
+    // uninstall() habiendo "validado" una seleccion vacia -- el mismo defecto que
+    // requireValue existe para evitar en el camino de las flags, aqui con el agravante
+    // de que el borrado ya habria pasado. Validar ANTES de desinstalar es el punto.
+    if (agents.length === 0) {
+      throw new Error('update: el manifiesto no registra ningun agente; pasa --agents explicitamente.');
+    }
+    await uninstall(ctx, { scope });
   }
   const interactive = process.stdin.isTTY && !flags.yes && (!agents || !scope);
   if (interactive) {
@@ -103,7 +134,10 @@ async function main(argv) {
     ({ scope, agents, skills } = answers);
     const plan = await planInstall({ ...ctx, scope, agents, skills, sourceDir, version });
     if ((await confirmPlan(describe(plan))) === null) return;
-    await install({ ...ctx, scope, agents, skills, sourceDir, version, mode: flags.mode, force: flags.force });
+    await install({
+      ...ctx, scope, agents, skills, sourceDir, version,
+      mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
+    });
     done('Listo.');
     return;
   }
@@ -122,13 +156,33 @@ function describe(plan) {
     (d) => `${d.path}  <-  ${d.skills.length} skills  (cubre: ${d.covers.join(', ')})`,
   );
   for (const id of plan.uncovered) {
-    lines.push(`AVISO: ${id} no admite skills en ámbito de proyecto; usa --global o confía en AGENTS.md.`);
+    // El aviso dependia del ambito de proyecto sin comprobarlo: en ambito global los
+    // agentes sin cobertura son otros (cursor, windsurf), que no tienen NINGUN
+    // directorio de skills global, asi que "usa --global" es un consejo que no lleva a
+    // ningun sitio. Cada ambito tiene su propio mensaje.
+    lines.push(
+      plan.scope === 'global'
+        ? `AVISO: ${id} no tiene directorio de skills global; solo lo cubre el bloque gestionado de AGENTS.md.`
+        : `AVISO: ${id} no admite skills en ámbito de proyecto; usa --global o confía en AGENTS.md.`,
+    );
   }
   for (const id of plan.duplicated) lines.push(`AVISO: ${id} cargaría los skills por duplicado.`);
+  // Silencio + exit 0 es justo el fallo que motivo esta ronda de revision (ver el guard
+  // del punto de entrada, mas abajo). Si el plan no genero ningun destino, decirlo.
+  if (plan.destinations.length === 0) {
+    lines.push('AVISO: no se instaló nada — ningún agente pedido tiene un destino de skills en este ámbito.');
+  }
   return lines;
 }
 
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('cli.js')) {
+// Bajo un bin enlazado por symlink -- lo que producen npx, `npm i -g` y `npm link` en
+// POSIX -- process.argv[1] es el symlink mientras que import.meta.url ya viene con el
+// realpath resuelto. Comparar contra `file://${process.argv[1]}` (o mirar si termina en
+// "cli.js") fallaba en silencio en ese caso: el binario no hacia nada y salia con 0.
+// realpathSync resuelve el symlink; pathToFileURL entiende backslashes de Windows y
+// rutas con espacios, cosa que la interpolacion de string de antes no hacia.
+const entryUrl = process.argv[1] ? pathToFileURL(realpathSync(process.argv[1])).href : '';
+if (import.meta.url === entryUrl) {
   main(process.argv.slice(2)).catch((err) => {
     console.error(err.message);
     process.exitCode = 1;
