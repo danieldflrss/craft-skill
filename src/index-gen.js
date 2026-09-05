@@ -22,7 +22,9 @@ export async function generateIndexTable(rulesDir) {
   return [
     '| Rule | Read it when |',
     '| --- | --- |',
-    ...metas.map((m) => `| \`${m.name}\` | ${m.appliesWhen} |`),
+    // Una barra vertical sin escapar en applies-when parte la tabla markdown sin dar
+    // ningun error, justo en el modulo cuyo trabajo es que el indice sea confiable.
+    ...metas.map((m) => `| \`${m.name}\` | ${m.appliesWhen.replaceAll('|', '\\|')} |`),
   ].join('\n');
 }
 

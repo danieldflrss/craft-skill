@@ -42,6 +42,19 @@ test('syncIndex reemplaza solo lo que hay entre marcadores', async () => {
   assert.ok(out.includes('`solid`'));
 });
 
+test('un rule cuyo name no casa con el fichero lanza error', async () => {
+  const { rules } = await fixture();
+  await fs.writeFile(path.join(rules, 'mal.md'), '---\nname: otro\napplies-when: X\n---\n');
+  await assert.rejects(() => generateIndexTable(rules), /does not match filename/);
+});
+
+test('una barra vertical en applies-when no rompe la tabla', async () => {
+  const { rules } = await fixture();
+  await fs.writeFile(path.join(rules, 'pipes.md'), '---\nname: pipes\napplies-when: A | B\n---\n');
+  const row = (await generateIndexTable(rules)).split('\n').find((l) => l.includes('`pipes`'));
+  assert.equal(row.split('|').length, 4);
+});
+
 test('sin marcadores lanza un error accionable', async () => {
   const { root, rules } = await fixture();
   const skillMd = path.join(root, 'sin.md');

@@ -18,11 +18,11 @@ conditionals only when their trigger holds. Never load more than eight rules.
 
 **Core — read all of these:**
 
-- `../engineering-rules/rules/RULE_NAME.md`
+- `../engineering-rules/rules/<name>.md`
 
 **Conditional — read only if its trigger holds:**
 
-- `../engineering-rules/rules/RULE_NAME.md` — when <trigger>
+- `../engineering-rules/rules/<name>.md` — when <trigger>
 
 ## Workflow
 
