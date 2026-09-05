@@ -19,6 +19,7 @@ export async function status(ctx) {
       path: absPath,
       scope: manifest.scope,
       craftkitVersion: manifest.craftkitVersion,
+      agents: manifest.agents ?? [],
       skills: manifest.entries.map((e) => ({ name: e.skill, mode: e.mode })),
     });
   }

@@ -68,6 +68,7 @@ export async function install(opts) {
             schema: 1,
             craftkitVersion: opts.version,
             scope: opts.scope,
+            agents: opts.agents,
             installedAt: new Date().toISOString(),
             entries,
           });
