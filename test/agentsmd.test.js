@@ -37,11 +37,16 @@ test('ida y vuelta byte a byte, preservando las lineas en blanco del usuario', (
   assert.equal(removeBlock(upsertBlock(original, 'X')), original);
 });
 
+// El fixture necesita la mencion en prosa Y un bloque real instalado. Con solo la
+// mencion no hay END en el archivo, la version ingenua caia por la rama de anadir y
+// preservaba el contenido por accidente: el test pasaba sin probar nada.
 test('una mencion del marcador en la prosa no destruye el contenido del usuario', () => {
-  const original = `Usamos ${START} para delimitar.\n\nparrafo del usuario\n`;
+  const original = `Usamos ${START} para delimitar.\n\nparrafo del usuario\n\n${START}\nviejo\n${END}\n`;
   const out = upsertBlock(original, 'X');
   assert.ok(out.includes('parrafo del usuario'));
   assert.ok(out.includes('Usamos'));
+  assert.ok(out.includes('X'));
+  assert.ok(!out.includes('viejo'));
 });
 
 test('un END antes que un START deja el archivo intacto', () => {
