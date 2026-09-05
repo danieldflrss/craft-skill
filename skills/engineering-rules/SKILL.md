@@ -23,7 +23,13 @@ rules whose `applies-when` condition actually holds for the code in front of it.
 | Rule | Read it when |
 | --- | --- |
 | `anti-patterns` | Reviewing or extending code you did not write. |
+| `api-design` | Designing or changing an interface consumed by another team, service, or client. |
+| `architecture` | Deciding how modules, services, or layers fit together. |
+| `clean-architecture` | The codebase has business rules worth protecting from frameworks and I/O. |
 | `clean-code` | Any code you write or modify. |
+| `ddd` | The domain has rules and vocabulary that non-programmers argue about. |
+| `design-patterns` | You recognize a recurring structural problem and want a known solution. |
+| `hexagonal-architecture` | You need to exercise the domain without infrastructure, or to swap an external system. |
 | `language-idioms` | Writing in a language whose local conventions you have not confirmed in this repository. |
 | `refactoring` | The code's current shape resists the change you need, or a feature left the design worse than it found it. |
 | `simplicity-and-yagni` | You are about to add an abstraction, a configuration option, or a capability nobody asked for. |
