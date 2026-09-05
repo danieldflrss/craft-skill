@@ -79,3 +79,28 @@ test('Codex en ámbito de proyecto se reporta como no cubierto', async () => {
   assert.deepEqual(plan.uncovered, ['codex']);
   assert.deepEqual(plan.destinations, []);
 });
+
+test('un fallo a mitad deja manifiesto de lo ya instalado, y el reintento no exige --force', async () => {
+  const ctx = await env();
+  // Un skill de origen inexistente hace fallar materializeSkill en el segundo del lote.
+  const opts = { ...ctx, agents: ['claude-code'], mode: 'copy',
+                 skills: ['craft-architect', 'no-existe'] };
+  await assert.rejects(() => install(opts));
+
+  const dest = path.join(ctx.cwd, '.claude', 'skills');
+  const manifest = await readManifest(dest);
+  assert.equal(manifest.entries.length, 1);
+  assert.equal(manifest.entries[0].skill, 'craft-architect');
+
+  // El reintento con el lote correcto no debe encontrar conflictos.
+  const plan = await planInstall({ ...ctx, agents: ['claude-code'] });
+  assert.deepEqual(plan.conflicts, []);
+});
+
+test('un destino global se nombra por su token en AGENTS.md, no con ../..', async () => {
+  const ctx = await env();
+  await install({ ...ctx, scope: 'global', agents: ['claude-code'], mode: 'copy' });
+  const agentsmd = await fs.readFile(path.join(ctx.cwd, 'AGENTS.md'), 'utf8');
+  assert.ok(agentsmd.includes('~/.claude/skills'));
+  assert.ok(!agentsmd.includes('..'));
+});

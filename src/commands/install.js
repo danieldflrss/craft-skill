@@ -44,28 +44,45 @@ export async function install(opts) {
   if (opts.dryRun) return { plan, applied: [] };
 
   const applied = [];
-  for (const dest of plan.destinations) {
-    const entries = [];
-    for (const skill of dest.skills) {
-      const target = path.join(dest.absPath, skill);
-      await fs.rm(target, { recursive: true, force: true });
-      const result = await materializeSkill(path.join(opts.sourceDir, skill), target, {
-        mode: opts.mode ?? 'auto',
-      });
-      entries.push({ skill, mode: result.mode, files: result.files });
+  const materialized = [];
+  try {
+    for (const dest of plan.destinations) {
+      const entries = [];
+      try {
+        for (const skill of dest.skills) {
+          const target = path.join(dest.absPath, skill);
+          await fs.rm(target, { recursive: true, force: true });
+          const result = await materializeSkill(path.join(opts.sourceDir, skill), target, {
+            mode: opts.mode ?? 'auto',
+          });
+          entries.push({ skill, mode: result.mode, files: result.files });
+        }
+      } finally {
+        // El manifiesto se escribe con lo que SI se materializo, tambien si fallamos a
+        // mitad del bucle. Sin esto, los skills ya escritos quedarian sin duenio y el
+        // reintento los veria como ajenos, obligando a --force para recuperarse de un
+        // fallo que el usuario no provoco. Es el mismo criterio que aplica
+        // materializeSkill un nivel mas abajo.
+        if (entries.length > 0) {
+          await writeManifest(dest.absPath, {
+            schema: 1,
+            craftkitVersion: opts.version,
+            scope: opts.scope,
+            installedAt: new Date().toISOString(),
+            entries,
+          });
+          materialized.push(dest);
+        }
+      }
+      applied.push({ path: dest.absPath, mode: entries[0]?.mode ?? 'copy' });
     }
-    await writeManifest(dest.absPath, {
-      schema: 1,
-      craftkitVersion: opts.version,
-      scope: opts.scope,
-      installedAt: new Date().toISOString(),
-      entries,
-    });
-    applied.push({ path: dest.absPath, mode: entries[0]?.mode ?? 'copy' });
+  } finally {
+    // Una sola escritura, fuera del bucle: `upsertBlock` reemplaza el bloque, asi que
+    // escribirlo por destino dejaria solo el ultimo. Va en finally y solo con los
+    // destinos que llegaron a tener manifiesto, para que AGENTS.md refleje lo que
+    // realmente quedo instalado aunque un destino posterior fallase.
+    await writeAgentsMd(opts, materialized);
   }
-  // Una sola escritura, fuera del bucle: `upsertBlock` reemplaza el bloque, así que
-  // escribirlo por destino dejaría solo el último.
-  await writeAgentsMd(opts, plan.destinations);
   return { plan, applied };
 }
 
@@ -73,8 +90,13 @@ async function writeAgentsMd(opts, destinations) {
   if (destinations.length === 0) return;
   const file = path.join(opts.cwd, 'AGENTS.md');
   const current = await fs.readFile(file, 'utf8').catch(() => '');
-  const relDirs = destinations.map(
-    (d) => path.relative(opts.cwd, d.absPath).split(path.sep).join('/') || d.path,
+  // Para un destino global, path.relative desde cwd produce rutas con ../.. que no
+  // significan nada en un AGENTS.md que vive en cwd. En ese caso conservamos el token
+  // original (`~/.claude/skills`), que es lo que el lector entiende.
+  const relDirs = destinations.map((d) =>
+    d.path.startsWith('~/')
+      ? d.path
+      : path.relative(opts.cwd, d.absPath).split(path.sep).join('/') || d.path,
   );
   const skills = [...new Set(destinations.flatMap((d) => d.skills))].sort();
   await fs.writeFile(file, upsertBlock(current, renderBlock(skills, relDirs)), 'utf8');
