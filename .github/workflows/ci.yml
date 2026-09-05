@@ -18,8 +18,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      # No hay package-lock.json en este repo (una sola dependencia de runtime,
-      # @clack/prompts, que ni siquiera cargan los tests). `npm ci` exige lockfile;
-      # usamos `npm install` en su lugar en vez de generar uno solo para CI.
-      - run: npm install --no-audit --no-fund
+      # `npm ci` instala exactamente lo que fija el lockfile y falla si ambos
+      # divergen, que es justo lo que se quiere en CI. Lo pide ademas el rule
+      # dependency-management que este mismo paquete distribuye.
+      - run: npm ci --no-audit --no-fund
       - run: npm test

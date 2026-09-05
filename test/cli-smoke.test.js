@@ -9,24 +9,33 @@ import { fileURLToPath } from 'node:url';
 const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'cli.js');
 const roots = [];
 
-async function tmpCwd() {
+// El proceso hijo hereda el entorno, y `status` escanea tambien las rutas GLOBALES.
+// Aislar solo el cwd deja el test dependiendo de si quien lo ejecuta tiene craftkit
+// instalado en su home: pasaria en una maquina limpia y fallaria en la de cualquier
+// colaborador del proyecto. Aislamos tambien el home (USERPROFILE en Windows, HOME en
+// POSIX) para que el binario mire a un arbol vacio en los dos ambitos.
+async function tmpEnv() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'craftkit-smoke-'));
   roots.push(root);
-  return root;
+  const cwd = path.join(root, 'proj');
+  const home = path.join(root, 'home');
+  await fs.mkdir(cwd, { recursive: true });
+  await fs.mkdir(home, { recursive: true });
+  return { cwd, env: { ...process.env, HOME: home, USERPROFILE: home } };
 }
 
 test('el binario se ejecuta de verdad y responde a status', async () => {
-  const cwd = await tmpCwd();
-  const out = execFileSync(process.execPath, [CLI, 'status'], { cwd, encoding: 'utf8' });
+  const { cwd, env } = await tmpEnv();
+  const out = execFileSync(process.execPath, [CLI, 'status'], { cwd, env, encoding: 'utf8' });
   assert.match(out, /no está instalado/);
 });
 
 test('el binario resuelve el plan en un dry-run', async () => {
-  const cwd = await tmpCwd();
+  const { cwd, env } = await tmpEnv();
   const out = execFileSync(
     process.execPath,
     [CLI, 'install', '--agents', 'claude-code,opencode', '--local', '--yes', '--dry-run'],
-    { cwd, encoding: 'utf8' },
+    { cwd, env, encoding: 'utf8' },
   );
   assert.match(out, /\.claude[\\/]skills/);
   assert.match(out, /claude-code/);
