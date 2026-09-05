@@ -30,6 +30,11 @@ test('add-rule captura el nombre posicional', () => {
   assert.equal(parsed.flags.name, 'caching');
 });
 
+test('una bandera de lista sin valor falla en vez de quedarse vacia', () => {
+  assert.throws(() => parseArgs(['install', '--agents']), /--agents necesita un valor/);
+  assert.throws(() => parseArgs(['install', '--skills']), /--skills necesita un valor/);
+});
+
 test('agente desconocido lanza error legible', () => {
   assert.throws(() => parseArgs(['install', '--agents', 'emacs']), /Unknown agent: emacs/);
 });

@@ -23,8 +23,8 @@ export function parseArgs(argv) {
   const flags = { mode: 'auto', force: false, dryRun: false, yes: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '--agents') flags.agents = split(args[++i]).map(assertAgent);
-    else if (arg === '--skills') flags.skills = split(args[++i]);
+    if (arg === '--agents') flags.agents = requireValue('--agents', args[++i]).map(assertAgent);
+    else if (arg === '--skills') flags.skills = requireValue('--skills', args[++i]);
     else if (arg === '--global') flags.scope = 'global';
     else if (arg === '--local') flags.scope = 'project';
     else if (arg === '--copy') flags.mode = 'copy';
@@ -38,6 +38,15 @@ export function parseArgs(argv) {
 }
 
 const split = (value) => String(value ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
+// Una bandera de lista sin valor devolvia [] en silencio. Un array vacio es truthy, asi
+// que la guarda de mas abajo no saltaba, el resolvedor daba cero destinos, y el comando
+// reportaba exito sin instalar nada. Fallar aqui es la unica opcion honesta.
+function requireValue(flag, value) {
+  const parts = split(value);
+  if (parts.length === 0) throw new Error(`${flag} necesita un valor.`);
+  return parts;
+}
 
 function assertAgent(id) {
   if (!agentIds().includes(id)) throw new Error(`Unknown agent: ${id}`);
@@ -99,7 +108,8 @@ async function main(argv) {
     return;
   }
 
-  if (!agents) throw new Error('Sin TTY: --agents es obligatorio.');
+  // Se llega aqui sin TTY o con --yes, asi que el mensaje no puede hablar solo de TTY.
+  if (!agents) throw new Error('Modo no interactivo: --agents es obligatorio.');
   const result = await install({
     ...ctx, scope: scope ?? 'project', agents, skills, sourceDir, version,
     mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
