@@ -42,9 +42,7 @@ import { reserveStock } from './inventory';
 export function placeOrder(item: OrderItem) {
   reserveStock(item.sku);
 }
-```
 
-```ts
 // Do — inventory publishes; order reacts. The dependency now points one way.
 // inventory.ts
 export function reserveStock(sku: string, events: EventBus) {
