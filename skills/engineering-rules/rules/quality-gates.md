@@ -28,15 +28,11 @@ already trusts everyone else's judgment.
 ## Do / Don't
 
 ```ts
-// Don't — a failure is swallowed; CI reports success either way
-"scripts": {
-  "test": "node --test || true"
-}
+// Don't — the failure is swallowed; CI reports success either way
+const scripts = { test: 'node --test || true' };
 
 // Do — a failing gate fails the command, and CI blocks the merge
-"scripts": {
-  "test": "node --test"
-}
+const scripts = { test: 'node --test' };
 ```
 
 ## Smells

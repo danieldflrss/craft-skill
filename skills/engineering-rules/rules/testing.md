@@ -34,18 +34,17 @@ attention on green checkmarks that mean nothing.
 ## Do / Don't
 
 ```ts
-// Don't — asserts on how the result was produced; breaks on any refactor
-it('rejects an insufficient balance', () => {
-  const spy = jest.spyOn(account, 'getBalance');
-  service.withdraw(account, 100);
-  expect(spy).toHaveBeenCalledTimes(1);
-});
+// Don't — asserts on internals; breaks on every refactor
+let called = false;
+const orig = account.getBalance;
+account.getBalance = () => (called = true, orig());
+service.withdraw(account, 100);
+if (!called) throw new Error('Expected call');
 
-// Do — asserts on the observable behavior itself
-it('rejects a withdrawal when the balance is insufficient', () => {
-  const account = new Account({ balance: 50 });
-  expect(() => service.withdraw(account, 100)).toThrow(InsufficientBalanceError);
-});
+// Do — asserts on observable behavior
+const acct = new Account({ balance: 50 });
+try { service.withdraw(acct, 100); throw new Error('Expected error'); }
+catch (err) { if (!(err instanceof InsufficientBalanceError)) throw err; }
 ```
 
 ## Smells
