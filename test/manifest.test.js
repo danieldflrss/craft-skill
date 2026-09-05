@@ -41,6 +41,20 @@ test('un manifiesto corrupto se trata como inexistente', async () => {
   assert.equal(await readManifest(root), null);
 });
 
+// Un directorio con el nombre del manifiesto hace fallar readFile (EISDIR) de forma
+// portable y determinista, sin necesidad de tocar permisos.
+test('un manifiesto ilegible no se confunde con uno inexistente', async () => {
+  const root = await tmp();
+  await fs.mkdir(path.join(root, MANIFEST_NAME), { recursive: true });
+  await assert.rejects(() => readManifest(root));
+});
+
+test('la escritura no deja archivos temporales', async () => {
+  const root = await tmp();
+  await writeManifest(root, sample);
+  assert.deepEqual(await fs.readdir(root), [MANIFEST_NAME]);
+});
+
 test('removeManifest es idempotente', async () => {
   const root = await tmp();
   await writeManifest(root, sample);
