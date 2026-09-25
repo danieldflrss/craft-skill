@@ -1,0 +1,32 @@
+[
+  {
+    "id": "authorization",
+    "task": "Fix readDocument in starter.mjs. A document has id, ownerId, and body. Only an authenticated actor whose id equals ownerId may read it. store.findById(id) returns a document or null. Missing documents and access denial must reject with Error('not found'), without leaking document content. Preserve the authorized result. Add meaningful verification.",
+    "review": "Check unauthenticated and cross-owner paths, evidence of security-rule selection despite the small diff, and absence of content leakage. Do not require a new authorization framework."
+  },
+  {
+    "id": "concurrency",
+    "task": "Fix reserveSeat in starter.mjs. Multiple service instances can reserve the same seat. Exactly one request must succeed, others reject with Error('unavailable'). The storage adapter exposes updateIfAvailable(id), an atomic conditional write returning true only to the winner; it also has the old findById and markReserved methods. Use the storage contract, preserve unrelated behavior, and verify concurrent callers. Adapter contract verification against the production database is outside this fixture; report that limitation.",
+    "review": "Check atomicity, useful concurrency assertions, and honest distinction between an adapter fake and a real database. A process-local lock cannot protect multiple instances."
+  },
+  {
+    "id": "bounded-access",
+    "task": "Fix listOrders in starter.mjs for a million-order dataset. Return { rows, nextCursor } with stable id ordering, default limit 20, integer limits 1..100, and a nonnegative integer offset cursor (default 0). Reject invalid options with Error('invalid pagination'). db.readPage({ limit, cursor }) returns that shape with customers included and performs bounded storage access. Legacy findAll/findCustomer remain available. Prevent unbounded reads and per-row customer queries; verify pagination and report what this fixture cannot prove about database performance.",
+    "review": "Check bounded reads, validation before I/O, stable pagination, and query-count evidence. Require real query-plan/load evidence before accepting any production latency claim."
+  },
+  {
+    "id": "closed-variant",
+    "task": "Extend priceFor in starter.mjs with an employee discount of 30%. Customer kinds are a closed set: standard, vip, employee. Preserve existing prices and rejection of unknown kinds. Verify behavior. There is no plugin or runtime registration requirement.",
+    "review": "Check preserved behavior and proportionate implementation. An exhaustive switch or simple lookup is valid; added classes or registries need a demonstrated benefit."
+  },
+  {
+    "id": "shared-knowledge",
+    "task": "invoiceTotal and checkoutTotal in starter.mjs implement the same business pricing policy, owned by the pricing team: standard pays full price, vip receives 10% off, and unknown kinds must reject. Centralize that policy using existing code where appropriate, preserve both public functions, and verify both consumers. Do not add employee pricing in this task.",
+    "review": "Check that both consumers actually delegate to one policy owner; passing output tests alone cannot establish reuse. Reject extraction based only on syntax or creation of a generic utility framework."
+  },
+  {
+    "id": "localized-bug",
+    "task": "Fix parseAmount in starter.mjs. Accept only string amounts matching one or more ASCII digits with an optional dot and one or two decimal digits, no sign or whitespace. Return exact integer cents, including leading-zero inputs, or reject with Error('invalid amount') if syntax is invalid or cents exceed Number.MAX_SAFE_INTEGER. Demonstrate a failing reproduction before the fix and keep the change localized.",
+    "review": "Check full-input parsing, fractional precision, safe-integer bounds, useful regression assertions, and no unrelated refactoring. parseFloat('12,50') is 12, not NaN."
+  }
+]

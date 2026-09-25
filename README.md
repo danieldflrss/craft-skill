@@ -58,16 +58,19 @@ nativo de skills. **Si usas Codex, instala con `--global`.**
 
 ## Cómo funciona la selección de reglas
 
-Las reglas de `engineering-rules` **no se cargan todas de una vez**. Cada skill `craft-*` declara
-un conjunto **core** (obligatorio) más un conjunto de reglas **condicionales**, cada una con su
-disparador ("cuando aplica X"). Ningún skill carga más de ocho reglas para una misma tarea — si
-el core más las condicionales activas superarían ese tope, la tarea no está suficientemente
-acotada y hay que partirla antes de continuar.
+Las reglas de `engineering-rules` **no se cargan todas de una vez**. Cada skill `craft-*` consulta
+el índice compartido y selecciona reglas según los riesgos observables del cambio: entrada
+externa, autorización, concurrencia, reintentos, acceso a datos, contratos o nuevas abstracciones.
+Un cambio pequeño puede necesitar controles de seguridad o concurrencia.
 
-El índice de `engineering-rules/SKILL.md` (la tabla `Rule | Read it when`) existe para **ajustar**
-esa selección puntual — comprobar si una regla concreta aplica a la tarea que tienes delante —, no
-para elegir reglas desde cero navegando la lista completa. Un agente que sigue un skill `craft-*`
-ya sabe qué reglas leer sin abrir el índice.
+Cada pasada carga como máximo ocho reglas. Si hacen falta más, se programan pasadas adicionales
+por riesgo, conservando las comprobaciones pendientes y los invariantes entre componentes.
+El límite de contexto no justifica omitir un riesgo.
+
+Los flujos permiten pasar de especificación a arquitectura o implementación, y volver cuando
+la decisión esté resuelta. Las abstracciones se justifican por consumidores reales, conocimiento
+de negocio compartido o fronteras protegidas. El cierre comunica comandos y resultados observados,
+incluidos los controles fallidos o pendientes. Los commits siguen la política del usuario y del repositorio.
 
 ## Extender: añadir reglas y skills
 
@@ -113,3 +116,11 @@ npm test
 ```
 
 ejecuta la suite completa con `node --test`, sin argumentos adicionales.
+
+### Evaluar la calidad del código generado
+
+Los tests de contenido verifican estructura, metadatos, referencias e índice; no prueban que un
+modelo genere mejor software. El protocolo en [`docs/evaluation.md`](docs/evaluation.md) y los
+casos de `eval/` permiten comparar revisiones de las skills con el mismo modelo y contexto,
+evaluando corrección, complejidad, verificación y coste. Los resultados deben obtenerse mediante
+ejecuciones reales; disponer de los casos no implica una mejora medida.

@@ -14,17 +14,20 @@ attention on green checkmarks that mean nothing.
 
 ## Checklist
 
-1. Write the failing test first and run it to confirm it fails for the right reason. A test never
-   seen red proves nothing.
+1. For a reproducible bug, run a regression test or reproduction before the fix and confirm the
+   failure reason. Prefer test-first for new behavior; choose checks that detect a plausible wrong
+   implementation rather than tests that mirror the code. Report when reproduction is unavailable.
 2. One behavior per test. The name states the behavior and its condition:
    `rejects a transfer when the balance is insufficient`.
 3. Arrange, Act, Assert — visibly separated. A huge arrange section is a design signal, not a test
    problem.
 4. Test through public behavior, not internals. Tests asserting on private calls break on every
    refactor.
-5. Pyramid: many fast unit tests, fewer integration tests at real boundaries, very few end-to-end.
-6. Prefer fakes and stubs. Use mocks with call verification only where the interaction *is* the
-   behavior. Never mock what you do not own — wrap it and fake the wrapper.
+5. Choose test levels by risk: fast behavior tests, real-boundary integration checks for storage,
+   transactions, and protocols, and end-to-end tests for critical journeys.
+6. Use fakes and stubs for controlled failures and isolated logic. Verify real integration contracts
+   where a fake cannot establish correctness. Mock calls only when the interaction is the behavior;
+   avoid coupling tests to third-party implementation details.
 7. Determinism: inject clock, randomness, and identifiers. No sleeps, no dependence on test order,
    no shared mutable fixtures.
 8. Coverage is a signal, never a target. An untested branch matters; a percentage does not.
@@ -56,4 +59,5 @@ an `if` inside a test · a test that still passes when the implementation is del
 
 ## When to ignore
 
-Throwaway spikes, explicitly labeled as such and deleted afterwards.
+Throwaway spikes explicitly labeled for deletion, or non-behavioral edits already covered by
+appropriate static or content checks. Do not add redundant tests just to satisfy a ritual.

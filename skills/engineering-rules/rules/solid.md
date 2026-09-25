@@ -14,48 +14,43 @@ radiating across the codebase.
 
 ## Checklist
 
-1. SRP: name each module with a single noun phrase and no "and". If the honest name needs "and",
-   split it.
-2. SRP detection: list who would ask for a change here. More than one stakeholder means more than
-   one responsibility.
-3. OCP: adding a variant should mean adding a file, not editing a `switch`. A type `switch` that
-   grows with every feature becomes polymorphism or a registry.
+1. SRP: identify the decision and invariant a module owns. Split responsibilities that change
+   independently; names and stakeholder count are investigation signals, not proof.
+2. Inspect callers before extracting shared behavior. Share stable business knowledge, not merely
+   similar syntax; unrelated rules must be able to evolve independently.
+3. OCP: keep an exhaustive `switch` for a small closed set. Consider functions, polymorphism, or a
+   registry when independently extended variants force repeated coordinated edits.
 4. LSP: a subtype accepts everything the base accepts and promises at least as much. An override
    that throws `NotSupported` is a violation.
 5. ISP: no consumer depends on methods it never calls. Split fat interfaces per consumer.
 6. DIP: the high-level policy declares the interface it needs and owns it; the low-level detail
    implements it. The interface lives with the policy.
-7. Introduce an abstraction only where a second implementation exists — a test double counts. One
-   implementation and no double means the interface is speculative.
+7. Justify an abstraction by actual consumers, a volatile boundary, or a protected invariant.
+   A second implementation can be evidence; a test double alone does not justify an interface.
 
 ## Do / Don't
 
 ```ts
-// Don't — OCP violation: every new discount type edits this switch
-function priceFor(kind: 'standard' | 'vip' | 'employee', amount: number): number {
+// Don't — duplicate the same pricing rule across invoice and checkout callers.
+const invoiceTotal = kind === 'vip' ? amount * 0.9 : amount;
+const checkoutTotal = kind === 'vip' ? amount * 0.9 : amount;
+
+// Do — one owner for a closed business rule; classes are not required.
+type CustomerKind = 'standard' | 'vip';
+function priceFor(kind: CustomerKind, amount: number): number {
   switch (kind) {
     case 'standard': return amount;
     case 'vip': return amount * 0.9;
-    case 'employee': return amount * 0.7;
   }
-}
-
-// Do — adding a discount means adding a class, not editing this function
-interface DiscountPolicy {
-  apply(amount: number): number;
-}
-
-function priceFor(policy: DiscountPolicy, amount: number): number {
-  return policy.apply(amount);
 }
 ```
 
 ## Smells
 
-"and" in a class name · the same type `switch` repeated across the codebase · overrides that throw
-· single-implementation interfaces created "for flexibility" · domain code importing an ORM.
+unrelated changes repeatedly touching one module · duplicated business decisions · overrides that
+throw · interfaces justified only by a mock · domain policy coupled to an ORM.
 
 ## When to ignore
 
-Scripts, prototypes, and modules with a single collaborator — there is no second implementation or
-stakeholder to protect against yet.
+Do not introduce extension machinery for a closed set or a short-lived script. A concrete function
+or module is enough when it already localizes the decision and protects the needed contract.

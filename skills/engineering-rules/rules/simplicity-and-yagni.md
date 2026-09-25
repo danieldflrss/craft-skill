@@ -14,11 +14,13 @@ flexibility does not sit idle; it accumulates interest as dead weight on every f
 ## Checklist
 
 1. Build what the current requirement needs, not the one you imagine next.
-2. Rule of three: extract the abstraction on the third occurrence, not the first.
+2. Treat repetition as a signal to inspect semantics, not an extraction threshold. Consolidate a
+   shared invariant when divergence would be a bug; keep independently evolving rules separate.
 3. Prefer duplication over the wrong abstraction. Duplication is cheap; a wrong abstraction is paid
    on every future change.
 4. No configuration option without a caller that needs it today.
-5. No interface with a single implementation and no test double.
+5. Justify interfaces by a real consumer contract or protected boundary. Neither implementation
+   count nor a test double alone decides whether an abstraction is useful.
 6. Try deleting before adding: check whether the requirement disappears by removing something.
 7. Every dependency, layer, and indirection must justify its cost out loud, in the PR description.
 

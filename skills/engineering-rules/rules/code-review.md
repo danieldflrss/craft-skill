@@ -13,17 +13,18 @@ what a formatter could have caught instead of to the one input the diff doesn't 
 
 ## Checklist
 
-1. Review in priority order and say which level each comment is at: correctness, then security,
-   then design, then tests, then readability, then style.
+1. Review correctness, security, design, tests, and readability; rank findings by impact and
+   likelihood rather than category alone.
 2. Style is not a review topic. If you argued about formatting, the formatter is missing from CI.
 3. Verify the change does what its description claims, and that the description matches the diff.
 4. Read the tests first: they state what the author believes the behavior is.
-5. Ask about the case the diff does not cover — empty, null, concurrent, failing dependency —
-   instead of asserting it is broken.
+5. Establish evidence: for functional defects, show inputs/state and the wrong result. For design
+   defects, name the violated boundary, affected locations, and concrete consequence. Ask when
+   context is missing; do not present a hypothetical concern as a confirmed defect.
 6. Comment on the code, never the author. Mark each comment blocking or optional (`nit:`,
    `consider:`).
-7. Cap review size. Beyond roughly four hundred changed lines, defect detection collapses — ask
-   for a split instead of skimming.
+7. Around four hundred changed lines, reassess review scope. Review cohesive slices and their
+   interactions; request a split when reliable coverage is not feasible.
 8. Approve when the change is better than what is there and the risks are understood. Perfection
    is not the bar.
 
@@ -37,8 +38,9 @@ function parseAmount(input: string): number {
 // "I'd probably do this differently."
 
 // Do — names a concrete input the diff gets wrong
-// "parseAmount('12,50') returns NaN * 100 = NaN — European decimal
-// commas will hit this in production. Needs a test for that input."
+// "If decimal commas are accepted, parseAmount('12,50') returns 1200, not 1250.
+// parseFloat silently accepts the prefix. Parse the supported format completely,
+// or reject this input if the contract only accepts a dot; test that contract."
 ```
 
 ## Smells

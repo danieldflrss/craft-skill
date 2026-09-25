@@ -20,7 +20,7 @@ dialect — and every fight like that is a cost paid on every future change.
 4. Match the repo's async, nullability, and immutability conventions exactly.
 5. Run the repo's formatter and linter; never hand-format against them.
 
-## Idioms by language
+### Idioms by language
 
 | Language | Reach for |
 | --- | --- |

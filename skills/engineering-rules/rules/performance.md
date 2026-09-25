@@ -1,6 +1,6 @@
 ---
 name: performance
-applies-when: There is a measured performance problem, or you are choosing a data-access pattern.
+applies-when: Choosing data-access patterns or resource bounds, defining load budgets, or investigating measured performance problems.
 ---
 
 # Performance
@@ -14,19 +14,20 @@ performance work into an engineering change instead of a guess that happens to c
 
 ## Checklist
 
-1. Measure first — a profile or a benchmark, never intuition. Optimizing without a measurement is
-   guessing.
+1. For an existing performance problem, measure before optimizing. For new data access or capacity
+   decisions, state expected volume and concurrency, then validate against representative data.
 2. State the budget: a target latency (p95 or p99, never the mean) or throughput. Without a
    target you cannot know when to stop.
 3. Fix the algorithm and the data access before micro-optimizing. Most real wins are complexity
    and I/O, not CPU.
 4. Eliminate N+1 queries: one round trip, a batch, or a join. Watch the ORM's lazy loading.
-5. Index the columns you filter, join, and sort on, and confirm with the query plan rather than
-   by hope.
+5. Choose indexes using actual query patterns, selectivity, and write costs; confirm with the query
+   plan rather than indexing every filtered or sorted column.
 6. Cache only after measuring, and decide invalidation before adding it. A cache you cannot
    invalidate is a bug you cannot fix.
 7. Paginate and stream instead of loading unbounded collections into memory.
-8. Re-measure after the change and put the before/after number in the commit message.
+8. Bound batch size, concurrency, and queued work; define behavior at saturation. Re-measure after
+   changes and report dataset, workload, environment, and results. Label estimates as estimates.
 
 ## Do / Don't
 
@@ -38,7 +39,8 @@ for (const order of orders) {
 }
 
 // Do — one batched query; the ORM resolves the join
-const orders = await db.orders.findAll({ include: ['customer'] });
+const orders = await db.orders.findAll({ include: ['customer'], limit: 100 });
+// Confirm generated queries: eager loading alone does not prove one round trip.
 ```
 
 ## Smells
@@ -48,4 +50,5 @@ cache with neither TTL nor invalidation path.
 
 ## When to ignore
 
-Code off the hot path with no measured problem. Clarity wins by default.
+Skip optimization for code off the hot path with no measured problem. Still bound externally
+controlled work and collections; clarity is not a reason to allow unbounded resource use.

@@ -43,17 +43,22 @@ export function placeOrder(item: OrderItem) {
   reserveStock(item.sku);
 }
 
-// Do — inventory publishes; order reacts. The dependency now points one way.
+// Do — a coordinator owns replenishment; inventory no longer imports order.
 // inventory.ts
-export function reserveStock(sku: string, events: EventBus) {
-  if (isLowStock(sku)) events.publish({ type: 'LowStock', sku });
+export function reserveStock(sku: string): { needsReorder: boolean } {
+  decrementStock(sku);
+  return { needsReorder: isLowStock(sku) };
 }
 
-// order.ts
+// checkout.ts
 import { reserveStock } from './inventory';
-export function placeOrder(item: OrderItem, events: EventBus) {
-  reserveStock(item.sku, events);
+import { placeReplenishmentOrder } from './purchasing';
+export function checkout(item: OrderItem) {
+  const result = reserveStock(item.sku);
+  if (result.needsReorder) placeReplenishmentOrder(reorderFor(item.sku));
 }
+// purchasing does not reserve stock. If calls cross systems, define atomicity
+// and retry behavior separately; the dependency fix alone does not provide them.
 ```
 
 ## Smells

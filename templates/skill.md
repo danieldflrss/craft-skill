@@ -1,41 +1,40 @@
 ---
 name: SKILL_NAME
-description: Use when <concrete, observable trigger>
+description: "Use when <concrete, observable trigger>"
+license: MIT
+metadata:
+  author: craftkit contributors
+  version: "0.1.0"
 ---
 
 # SKILL_TITLE
 
-## When to use
+## Activation Contract
 
-| The task is… | Skill |
+Use for <observable situation and scope>.
+
+## Hard Rules
+
+- Follow repository instructions, existing conventions, and user commit policy.
+- Read `../engineering-rules/SKILL.md` and follow its risk-selection and verification procedure.
+- <Observable constraint specific to this workflow.>
+
+## Decision Gates
+
+| Evidence | Action |
 | --- | --- |
-| <situation> | `SKILL_NAME` |
+| <Condition> | <Decision or workflow handoff> |
 
-## Rule selection
+## Execution Steps
 
-Read `../engineering-rules/SKILL.md` for the index. Load the core set below, then add
-conditionals only when their trigger holds. Never load more than eight rules. If the core
-set plus the conditionals whose triggers hold would exceed eight, the task spans more than
-one design pass: narrow it to a single component and run this skill again for the next.
+1. Inspect existing behavior, callers, tests, and acceptance criteria.
+2. <Workflow-specific action.>
+3. Verify acceptance criteria and run repository-required checks.
 
-**Core — read all of these:**
+## Output Contract
 
-- `../engineering-rules/rules/<name>.md`
+Report delivered behavior, relevant decisions, checks and observed results, and failed or unverified criteria.
 
-**Conditional — read only if its trigger holds:**
+## References
 
-- `../engineering-rules/rules/<name>.md` — when <trigger>
-
-## Workflow
-
-1. <Step.>
-
-## Quality gates
-
-- [ ] <Gate.>
-
-## Red flags
-
-| Thought | Reality |
-| --- | --- |
-| <rationalization> | <correction> |
+- `../engineering-rules/SKILL.md` — risk selection and completion evidence.

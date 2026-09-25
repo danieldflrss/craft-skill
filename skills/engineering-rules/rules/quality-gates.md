@@ -13,16 +13,18 @@ already trusts everyone else's judgment.
 
 ## Checklist
 
-1. Write the definition of done and make it mechanical: build, format, lint, type-check, tests,
-   vulnerability audit — all green.
+1. Discover repository-required build, format, lint, type, test, and dependency checks. Run the
+   applicable commands; do not invent missing scripts or silently weaken existing gates.
 2. Gates run in CI, not only locally, and against the merge result rather than the stale branch.
-3. Never merge with a red or skipped gate. Disabling a gate is a change that needs its own review
-   and an expiry date.
-4. Gates must be fast enough to run on every push, or people route around them. Move slow suites
-   to a post-merge stage.
+3. Report required gates as passed, failed, or not run with evidence. Separate baseline failures
+   from regressions. A failed or unrun required gate prevents a claim of verified completion;
+   any exception follows repository policy, not an agent's unilateral decision.
+4. Keep feedback fast through targeted checks and parallel jobs. Critical correctness checks remain
+   pre-merge even when slow; only non-blocking diagnostics belong exclusively after merge.
 5. A flaky test is a broken gate. Quarantine it with an owner and a deadline; never retry until
    green.
-6. New behavior arrives with its tests in the same pull request. "Tests later" means never.
+6. New behavior arrives with meaningful verification in the same change. Use behavior tests where
+   they add evidence and document any acceptance criterion that remains unverified.
 7. Claiming "done" requires having run the gates and seen the output. Evidence before assertion.
 
 ## Do / Don't

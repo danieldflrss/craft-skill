@@ -11,16 +11,39 @@ const SKILLS = path.join(ROOT, 'skills');
 const RULES = path.join(SKILLS, 'engineering-rules', 'rules');
 const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SECTIONS = ['## Why', '## Checklist', '## Do / Don\'t', '## Smells', '## When to ignore'];
+const SKILL_SECTIONS = [
+  '## Activation Contract', '## Hard Rules', '## Decision Gates',
+  '## Execution Steps', '## Output Contract', '## References',
+];
 
 const dirs = async (p) =>
   (await fs.readdir(p, { withFileTypes: true })).filter((e) => e.isDirectory()).map((e) => e.name);
 
 test('cada SKILL.md tiene frontmatter válido y coherente con su directorio', async () => {
   for (const name of await dirs(SKILLS)) {
-    const { data } = parseFrontmatter(await fs.readFile(path.join(SKILLS, name, 'SKILL.md'), 'utf8'));
+    const text = await fs.readFile(path.join(SKILLS, name, 'SKILL.md'), 'utf8');
+    const { data } = parseFrontmatter(text);
     assert.equal(data.name, name, `${name}: name no coincide con el directorio`);
     assert.match(data.name, NAME, `${name}: nombre inválido`);
-    assert.ok(data.description?.length >= 1 && data.description.length <= 1024, `${name}: description fuera de rango`);
+    assert.ok(data.description?.length >= 1 && data.description.length <= 250, `${name}: description fuera de rango`);
+    assert.match(text, /^description: "[^"\r\n]+"$/m, `${name}: quote description on one line`);
+    assert.equal(data.license, 'MIT');
+    assert.match(text, /^metadata:\n  author: .+\n  version: "\d+\.\d+\.\d+"$/m);
+  }
+});
+
+test('workflow contracts and the skill template keep ordered, nonempty sections', async () => {
+  const files = (await dirs(SKILLS)).map((name) => path.join(SKILLS, name, 'SKILL.md'));
+  files.push(path.join(ROOT, 'templates', 'skill.md'));
+  for (const file of files) {
+    const text = await fs.readFile(file, 'utf8');
+    const headings = [...text.matchAll(/^## .+$/gm)];
+    assert.deepEqual(headings.slice(0, SKILL_SECTIONS.length).map((m) => m[0]), SKILL_SECTIONS, file);
+    for (const section of SKILL_SECTIONS) {
+      assert.equal(headings.filter((m) => m[0] === section).length, 1, `${file}: ${section}`);
+      const i = headings.findIndex((m) => m[0] === section);
+      assert.ok(text.slice(headings[i].index + section.length, headings[i + 1]?.index).trim(), `${file}: empty ${section}`);
+    }
   }
 });
 
@@ -33,9 +56,13 @@ test('los cinco skills de flujo llevan prefijo craft-', async () => {
 test('cada rule tiene las cinco secciones obligatorias y no pasa de 120 líneas', async () => {
   for (const file of (await fs.readdir(RULES)).filter((f) => f.endsWith('.md'))) {
     const text = await fs.readFile(path.join(RULES, file), 'utf8');
-    for (const section of SECTIONS) {
-      assert.ok(text.includes(section), `${file}: falta la sección ${section}`);
+    const headings = [...text.matchAll(/^## .+$/gm)];
+    assert.deepEqual(headings.map((m) => m[0]), SECTIONS, `${file}: section order or duplication`);
+    for (let i = 0; i < headings.length; i++) {
+      const content = text.slice(headings[i].index + headings[i][0].length, headings[i + 1]?.index).trim();
+      assert.ok(content.replace(/<!--[\s\S]*?-->/g, '').trim(), `${file}: empty ${headings[i][0]}`);
     }
+    assert.match(text, /```ts\n[\s\S]+?\n```/, `${file}: missing TypeScript example`);
     assert.ok(text.split('\n').length <= 120, `${file}: supera las 120 líneas`);
     const { data } = parseFrontmatter(text);
     assert.equal(data.name, path.basename(file, '.md'));
@@ -50,12 +77,12 @@ test('el índice está sincronizado con el directorio de rules', async () => {
   assert.equal(skillMd.slice(s, e).trim(), (await generateIndexTable(RULES)).trim());
 });
 
-test('ninguna referencia relativa a un rule está rota', async () => {
+test('ninguna referencia relativa a un skill o rule está rota', async () => {
   for (const name of await dirs(SKILLS)) {
     const file = path.join(SKILLS, name, 'SKILL.md');
     const text = await fs.readFile(file, 'utf8');
-    for (const m of text.matchAll(/\.\.\/engineering-rules\/rules\/([a-z0-9-]+)\.md/g)) {
-      await fs.access(path.join(RULES, `${m[1]}.md`));
+    for (const m of text.matchAll(/`(\.\.\/[a-z0-9-/]+\.md)`/g)) {
+      await fs.access(path.resolve(path.dirname(file), m[1]));
     }
   }
 });

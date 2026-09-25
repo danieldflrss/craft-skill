@@ -17,12 +17,13 @@ instead of merely debuggable after the fact.
 ## Checklist
 
 1. Prefer no shared mutable state. Immutable data and message passing remove whole classes of bug.
-2. Where state must be shared, write down — next to it — the invariant it protects and the lock
-   that guards it.
+2. Where state must be shared, document the invariant and its guard: atomic operation, constraint,
+   transaction, or lock. An in-process mutex does not coordinate multiple service instances.
 3. Acquire multiple locks in one documented global order. That is what prevents deadlock.
-4. Never hold a lock across an `await`, an I/O call, or a callback.
-5. Assume at-least-once delivery: every consumer and every write is idempotent, keyed by a
-   business identifier.
+4. Avoid holding locks across I/O or callbacks. When a transaction or async lock must span awaits,
+   keep the scope bounded and define timeout, cancellation, release, and deadlock behavior.
+5. For retryable writes and redelivered messages, define an operation-specific idempotency key,
+   atomic deduplication, and retention. An entity ID alone can suppress legitimate repeat actions.
 6. Make cancellation explicit and propagate it all the way down (`AbortSignal`, context,
    cancellation token).
 7. Bound every queue and pool, and decide what happens at the bound — reject, shed, or block. That
