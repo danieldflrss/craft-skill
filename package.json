@@ -1,5 +1,5 @@
 {
-  "name": "craftkit",
+  "name": "@danieldflrss/craftkit",
   "version": "0.1.2",
   "description": "Engineering skills and rules for coding agents",
   "type": "module",
