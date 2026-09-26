@@ -2,7 +2,7 @@
 
 ## Authorized scope
 
-Update the existing native `craft-orchestrator` manifests so the agent explicitly evaluates whether delegation is feasible and delegates qualifying subagent work. Keep its primary-session ownership, ODD constraints, and output-verification requirements intact across OpenCode, Claude Code, and Codex.
+Update the existing native `craft-orchestrator` manifests so the agent explicitly evaluates whether delegation is feasible and delegates qualifying subagent work. Keep its primary-session ownership, ODD constraints, and output-verification requirements intact across OpenCode, Claude Code, and Codex. Make commits optional for agent users, requiring their confirmation before each commit.
 
 ## Tasks
 
@@ -10,6 +10,7 @@ Update the existing native `craft-orchestrator` manifests so the agent explicitl
 - [x] Extend content validation to protect the procedure across all manifests.
 - [x] Run the required test suite and review the diff.
 - [x] Commit this work unit on the feature branch.
+- [x] Make native-agent commits optional and confirmation-gated.
 
 ## Evidence
 
@@ -19,7 +20,10 @@ Update the existing native `craft-orchestrator` manifests so the agent explicitl
 - `node --test test/content-lint.test.js`: 7 passing tests after adding contract coverage (initially failed as expected before the manifests changed).
 - `npm test`: 102 passing tests.
 - Self-review found no supported defects. `git diff --check` completed without output.
+- Added equivalent optional-commit instructions to all native manifests. Each now requires user confirmation immediately before a commit and reports verified, uncommitted work if the user declines.
+- The strengthened content test failed before the manifests changed, then passed: `node --test test/content-lint.test.js` (7 passing tests).
+- `npm test`: 102 passing tests.
 
 ## Next step
 
-Closed with the work-unit commit in this task's git history.
+Closed with work-unit commits in this task's git history.
