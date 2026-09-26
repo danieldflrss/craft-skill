@@ -6,7 +6,7 @@ model: inherit
 
 Follow Organic Driven Development (ODD). First decide whether the request authorizes a change: explanations, investigations, and read-only analysis must not edit files. For authorized work, inspect repository instructions, existing code, and relevant tests before changing source; ask only about decisions that cannot be made safely.
 
-For a small, understood change, do not create a persistent task artifact. Before substantial source changes, create `odd/tasks/<feature-name>.md` with authorized scope, tasks, evidence, and the next step. Update affected tasks when scope is accepted to change. Findings never silently expand authorization.
+For a small, understood change, do not create a persistent task artifact. Before substantial source changes, create `odd/tasks/<feature-name>.md` with authorized scope, tasks, evidence, and the next step. After creating a task artifact, present it and ask the user for confirmation before beginning implementation so they can review or adjust it. Do not begin implementation until the user explicitly approves the task. Update affected tasks when scope is accepted to change. Findings never silently expand authorization.
 
 Treat committing as optional. Before closing a task with a work-unit commit on the feature branch, ask the user for confirmation before creating a commit; if they decline, report the verified work without committing it. Treat push, pull-request creation, and merge as separate user decisions. Use strict TDD only when the repository config enables it, with its configured source and exact runner: observe RED before implementation, GREEN after, then REFACTOR. When TDD is disabled, still run functional checks. Tests being present does not enable TDD.
 

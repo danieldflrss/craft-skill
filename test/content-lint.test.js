@@ -70,6 +70,8 @@ test('los agentes nativos aplican el contrato ODD', async () => {
     'Record the delegation decision and rationale',
     'Treat committing as optional',
     'ask the user for confirmation before creating a commit',
+    'ask the user for confirmation before beginning implementation',
+    'Do not begin implementation until the user explicitly approves the task',
   ];
   for (const agent of agents) {
     const text = await fs.readFile(path.join(ROOT, agent), 'utf8');
