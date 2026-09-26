@@ -8,6 +8,7 @@ import { agentIds } from './targets.js';
 import { planInstall, install } from './commands/install.js';
 import { status } from './commands/status.js';
 import { uninstall } from './commands/uninstall.js';
+import { hasOrchestrator, installOrchestrator, uninstallOrchestrator } from './orchestrator.js';
 
 // `commands/add.js` se importa de forma diferida: lo crea la Task 17, y este
 // módulo debe poder cargarse (y testearse) antes de que exista.
@@ -32,6 +33,7 @@ export function parseArgs(argv) {
     else if (arg === '--force') flags.force = true;
     else if (arg === '--dry-run') flags.dryRun = true;
     else if (arg === '--yes' || arg === '-y') flags.yes = true;
+    else if (arg === '--with-orchestrator') flags.withOrchestrator = true;
     else if (!arg.startsWith('-')) {
       // Un positional suelto solo tiene sentido para add-rule/add-skill (el nombre a
       // crear). Para el resto de comandos absorberlo en silencio como flags.name dejaba
@@ -65,6 +67,7 @@ async function main(argv) {
   const { command, flags } = parseArgs(argv);
   const ctx = { cwd: process.cwd(), home: os.homedir() };
   const sourceDir = path.join(PKG_ROOT, 'skills');
+  const agentSourceDir = path.join(PKG_ROOT, 'agents');
   const version = JSON.parse(await fs.readFile(path.join(PKG_ROOT, 'package.json'), 'utf8')).version;
 
   if (command === 'status') {
@@ -74,7 +77,8 @@ async function main(argv) {
   }
   if (command === 'uninstall') {
     const { removed } = await uninstall(ctx);
-    console.log(`Eliminados ${removed.length} skills.`);
+    const agentRemoved = await uninstallOrchestrator(ctx);
+    console.log(`Eliminados ${removed.length} skills y ${agentRemoved.length} agentes.`);
     return;
   }
   if (command === 'add-rule' || command === 'add-skill') {
@@ -119,7 +123,9 @@ async function main(argv) {
     if (agents.length === 0) {
       throw new Error('update: el manifiesto no registra ningun agente; pasa --agents explicitamente.');
     }
+    flags.withOrchestrator = flags.withOrchestrator || await hasOrchestrator(ctx, scope);
     await uninstall(ctx, { scope });
+    await uninstallOrchestrator(ctx, { scope });
   }
   const interactive = process.stdin.isTTY && !flags.yes && (!agents || !scope);
   if (interactive) {
@@ -138,6 +144,7 @@ async function main(argv) {
       ...ctx, scope, agents, skills, sourceDir, version,
       mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
     });
+    if (flags.withOrchestrator) await installOrchestrator({ ...ctx, scope, agents, agentSourceDir, dryRun: flags.dryRun, force: flags.force });
     done('Listo.');
     return;
   }
@@ -148,6 +155,10 @@ async function main(argv) {
     ...ctx, scope: scope ?? 'project', agents, skills, sourceDir, version,
     mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
   });
+  if (flags.withOrchestrator) {
+    const agentPlan = await installOrchestrator({ ...ctx, scope: scope ?? 'project', agents, agentSourceDir, dryRun: flags.dryRun, force: flags.force });
+    for (const item of agentPlan) console.log(`${item.file}  <-  craft-orchestrator agent (${item.id})`);
+  }
   describe(result.plan).forEach((line) => console.log(line));
 }
 

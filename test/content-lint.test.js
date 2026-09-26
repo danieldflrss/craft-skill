@@ -53,6 +53,25 @@ test('los cinco skills de flujo llevan prefijo craft-', async () => {
   assert.ok(names.includes('engineering-rules'));
 });
 
+test('los agentes nativos aplican el contrato ODD', async () => {
+  const agents = [
+    'agents/opencode/craft-orchestrator.md',
+    'agents/claude-code/craft-orchestrator.md',
+    'agents/codex/craft-orchestrator.toml',
+  ];
+  const required = [
+    'Organic Driven Development (ODD)',
+    'explanations, investigations, and read-only analysis must not edit files',
+    'odd/tasks/<feature-name>.md',
+    'work-unit commit on the feature branch',
+    'observe RED before implementation, GREEN after, then REFACTOR',
+  ];
+  for (const agent of agents) {
+    const text = await fs.readFile(path.join(ROOT, agent), 'utf8');
+    for (const contract of required) assert.ok(text.includes(contract), `${agent}: falta ${contract}`);
+  }
+});
+
 test('cada rule tiene las cinco secciones obligatorias y no pasa de 120 líneas', async () => {
   for (const file of (await fs.readdir(RULES)).filter((f) => f.endsWith('.md'))) {
     const text = await fs.readFile(path.join(RULES, file), 'utf8');

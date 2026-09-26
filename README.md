@@ -1,9 +1,9 @@
 # craftkit
 
 `craftkit` es un paquete npm que instala skills y reglas de ingeniería en agentes de código
-(Claude Code, OpenCode, Codex CLI, Cursor, Windsurf, Gemini CLI). Incluye cinco skills de flujo
+(Claude Code, OpenCode, Codex CLI, Cursor, Windsurf, Gemini CLI). Incluye seis skills de flujo
 de trabajo (`craft-architect`, `craft-code-review`, `craft-feature-implementation`,
-`craft-quick-implementation`, `craft-spec-driven-development`) y un índice de 22 reglas de
+`craft-quick-implementation`, `craft-spec-driven-development`, `craft-orchestrator`) y un índice de 22 reglas de
 ingeniería (`engineering-rules`) que cada skill consulta para decidir qué leer.
 
 ## Instalación
@@ -14,6 +14,13 @@ npx craftkit install
 
 Sin flags, `install` es interactivo: pregunta qué agentes tienes, en qué ámbito instalar y con
 qué skills, y muestra el plan antes de tocar el disco.
+
+Para instalar el agente nativo `craft-orchestrator` junto con las skills, pasa
+`--with-orchestrator`. Por ejemplo:
+
+```bash
+npx craftkit install --agents opencode,claude-code,codex --local --with-orchestrator --yes
+```
 
 Para uso no interactivo (scripts, CI, o para saltarse las preguntas):
 
