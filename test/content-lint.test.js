@@ -65,6 +65,9 @@ test('los agentes nativos aplican el contrato ODD', async () => {
     'odd/tasks/<feature-name>.md',
     'work-unit commit on the feature branch',
     'observe RED before implementation, GREEN after, then REFACTOR',
+    'Evaluate delegation before beginning substantial work',
+    'Delegate when the benefit outweighs coordination and integration cost',
+    'Record the delegation decision and rationale',
   ];
   for (const agent of agents) {
     const text = await fs.readFile(path.join(ROOT, agent), 'utf8');
