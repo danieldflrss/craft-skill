@@ -1,13 +1,16 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseFrontmatter } from '../src/frontmatter.js';
 import { generateIndexTable, RULES_START, RULES_END } from '../src/index-gen.js';
+import { installOrchestrator } from '../src/orchestrator.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS = path.join(ROOT, 'skills');
+const roots = [];
 const RULES = path.join(SKILLS, 'engineering-rules', 'rules');
 const NAME = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SECTIONS = ['## Why', '## Checklist', '## Do / Don\'t', '## Smells', '## When to ignore'];
@@ -77,6 +80,39 @@ test('los agentes nativos aplican el contrato ODD', async () => {
     const text = await fs.readFile(path.join(ROOT, agent), 'utf8');
     for (const contract of required) assert.ok(text.includes(contract), `${agent}: falta ${contract}`);
   }
+});
+
+test('cada orquestador indica cómo lanzar subagentes y cómo responder si no están disponibles', async () => {
+  const platforms = [
+    { file: 'agents/opencode/craft-orchestrator.md', mechanism: 'subagent tool', choices: ['explore', 'general'] },
+    { file: 'agents/claude-code/craft-orchestrator.md', mechanism: 'Agent tool', choices: ['Explore', 'general-purpose'] },
+    { file: 'agents/codex/craft-orchestrator.toml', mechanism: 'spawn_agent', choices: ['explorer', 'worker'] },
+  ];
+  for (const { file, mechanism, choices } of platforms) {
+    const text = await fs.readFile(path.join(ROOT, file), 'utf8');
+    assert.ok(text.includes(mechanism), `${file}: missing launch mechanism ${mechanism}`);
+    for (const choice of choices) assert.ok(text.includes(choice), `${file}: missing agent ${choice}`);
+    assert.match(text, /launch .*eligible.*before .*implementation/i, `${file}: launch must happen before primary implementation`);
+    assert.match(text, /unavailable or denied/i, `${file}: report unavailable delegation`);
+    assert.match(text, /wait for .*results/i, `${file}: integrate child results`);
+  }
+});
+
+test('la instalación copia las instrucciones de delegación de los tres agentes nativos', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'craftkit-orchestrator-'));
+  roots.push(root);
+  const plan = await installOrchestrator({
+    cwd: root, home: path.join(root, 'home'), scope: 'project',
+    agents: ['opencode', 'claude-code', 'codex'], agentSourceDir: path.join(ROOT, 'agents'),
+  });
+  assert.equal(plan.length, 3);
+  for (const item of plan) {
+    assert.equal(await fs.readFile(item.file, 'utf8'), await fs.readFile(item.source, 'utf8'), item.id);
+  }
+});
+
+after(async () => {
+  for (const root of roots) await fs.rm(root, { recursive: true, force: true });
 });
 
 test('cada rule tiene las cinco secciones obligatorias y no pasa de 120 líneas', async () => {

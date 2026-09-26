@@ -22,6 +22,14 @@ Para instalar el agente nativo `craft-orchestrator` junto con las skills, pasa
 npx craftkit install --agents opencode,claude-code,codex --local --with-orchestrator --yes
 ```
 
+Instalar el archivo no activa automáticamente el agente: selecciona `craft-orchestrator` como
+agente principal en OpenCode o inicia Claude Code con `claude --agent craft-orchestrator`.
+En Codex, el archivo de `.codex/agents/` define un agente para sesiones delegadas; no convierte
+por sí solo la conversación principal en orquestador. Si lo ejecutas como subagente y tu cliente
+impide delegación anidada, no podrá lanzar otros subagentes. Comprueba también que tu configuración
+no deniegue la herramienta de subagentes. Para obtener versiones nuevas de los manifiestos
+instalados, ejecuta `npx craftkit update --local --yes` (o `--global` según corresponda).
+
 Para uso no interactivo (scripts, CI, o para saltarse las preguntas):
 
 | Flag | Efecto |
