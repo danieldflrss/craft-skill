@@ -41,6 +41,24 @@ test('el binario resuelve el plan en un dry-run', async () => {
   assert.match(out, /claude-code/);
 });
 
+test('update --dry-run no desinstala los skills existentes', async () => {
+  const { cwd, env } = await tmpEnv();
+  execFileSync(
+    process.execPath,
+    [CLI, 'install', '--agents', 'claude-code', '--local', '--copy', '--yes'],
+    { cwd, env, encoding: 'utf8' },
+  );
+
+  const out = execFileSync(
+    process.execPath,
+    [CLI, 'update', '--local', '--yes', '--dry-run'],
+    { cwd, env, encoding: 'utf8' },
+  );
+
+  assert.match(out, /\.claude[\\/]skills/);
+  assert.ok(await fs.stat(path.join(cwd, '.claude', 'skills', 'craft-architect', 'SKILL.md')));
+});
+
 after(async () => {
   for (const root of roots) await fs.rm(root, { recursive: true, force: true });
 });

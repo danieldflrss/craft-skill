@@ -12,8 +12,16 @@ ingeniería (`engineering-rules`) que cada skill consulta para decidir qué leer
 npx craftkit install
 ```
 
-Sin flags, `install` es interactivo: pregunta qué agentes tienes, en qué ámbito instalar y con
-qué skills, y muestra el plan antes de tocar el disco.
+Sin `--yes`, `install` abre un asistente interactivo: detecta agentes, permite elegir el ámbito,
+skills y modo de materialización (enlace automático o copia), y pregunta si quieres instalar el
+agente nativo `craft-orchestrator`. Antes de tocar el disco muestra todas las rutas que va a
+escribir, el bloque gestionado de `AGENTS.md`, cobertura compartida, limitaciones de cada agente
+y conflictos con archivos ajenos. Un conflicto exige confirmar explícitamente el sobrescrito con
+`--force` y después confirmar el plan completo.
+
+Si proporcionas `--agents`, `--local`/`--global`, `--skills`, `--copy` o
+`--with-orchestrator`, el asistente conserva esa elección y solo pregunta lo que falte. Usa
+`--yes` para omitirlo por completo, por ejemplo en scripts o CI.
 
 Para instalar el agente nativo `craft-orchestrator` junto con las skills, pasa
 `--with-orchestrator`. Por ejemplo:
@@ -117,9 +125,11 @@ alguien edita `engineering-rules/SKILL.md` a mano en vez de regenerarlo (ver `AG
 
 - `craftkit status` — lista qué hay instalado (destinos, agentes cubiertos, modo de cada skill).
 - `craftkit update` — reinstala con la misma selección de agentes y ámbito ya registrada (o la
-  que le pases por flag), útil tras actualizar la versión de craftkit.
+  que le pases por flag), útil tras actualizar la versión de craftkit. En una terminal interactiva
+  muestra el plan y pide confirmación antes de reemplazar archivos gestionados.
 - `craftkit uninstall` — elimina los skills instalados por craftkit y limpia el bloque gestionado
-  de `AGENTS.md`.
+  de `AGENTS.md`. En una terminal interactiva muestra los destinos afectados y exige
+  confirmación; pasa `--yes` para automatizarlo.
 
 ## Desarrollo
 

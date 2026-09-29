@@ -18,6 +18,16 @@ export function planOrchestrator({ cwd, home, scope, agents, agentSourceDir }) {
   });
 }
 
+export async function planOrchestratorConflicts(opts) {
+  const conflicts = [];
+  for (const item of planOrchestrator(opts)) {
+    const manifest = JSON.parse(await fs.readFile(path.join(item.dir, MANIFEST), 'utf8').catch(() => 'null'));
+    const exists = await fs.lstat(item.file).catch(() => null);
+    if (exists && manifest?.file !== path.basename(item.file)) conflicts.push(item.file);
+  }
+  return conflicts;
+}
+
 export async function installOrchestrator(opts) {
   const plan = planOrchestrator(opts);
   if (opts.dryRun) return plan;

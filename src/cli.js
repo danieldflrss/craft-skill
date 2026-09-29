@@ -8,7 +8,9 @@ import { agentIds } from './targets.js';
 import { planInstall, install } from './commands/install.js';
 import { status } from './commands/status.js';
 import { uninstall } from './commands/uninstall.js';
-import { hasOrchestrator, installOrchestrator, uninstallOrchestrator } from './orchestrator.js';
+import {
+  hasOrchestrator, installOrchestrator, planOrchestrator, planOrchestratorConflicts, uninstallOrchestrator,
+} from './orchestrator.js';
 
 // `commands/add.js` se importa de forma diferida: lo crea la Task 17, y este
 // módulo debe poder cargarse (y testearse) antes de que exista.
@@ -22,7 +24,7 @@ export function parseArgs(argv) {
   if (!COMMANDS.includes(command)) throw new Error(`Unknown command: ${command}`);
   const args = first && !first.startsWith('-') ? rest : argv;
 
-  const flags = { mode: 'auto', force: false, dryRun: false, yes: false };
+  const flags = { force: false, dryRun: false, yes: false };
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--agents') flags.agents = requireValue('--agents', args[++i]).map(assertAgent);
@@ -75,9 +77,33 @@ async function main(argv) {
     console.log(rows.length === 0 ? 'craftkit no está instalado aquí.' : JSON.stringify(rows, null, 2));
     return;
   }
+  const interactive = process.stdin.isTTY && !flags.yes;
   if (command === 'uninstall') {
-    const { removed } = await uninstall(ctx);
-    const agentRemoved = await uninstallOrchestrator(ctx);
+    const rows = await status(ctx);
+    let scope = flags.scope;
+    if (interactive && !scope && new Set(rows.map((row) => row.scope)).size > 1) {
+      const { promptScope } = await import('./prompts.js');
+      scope = await promptScope({
+        scopes: [...new Set(rows.map((row) => row.scope))],
+        message: '¿Qué instalación quieres desinstalar?',
+      });
+      if (scope === null) return;
+    }
+    const scopedRows = scope ? rows.filter((row) => row.scope === scope) : rows;
+    if (interactive && scopedRows.length > 0) {
+      const { confirmDestructive } = await import('./prompts.js');
+      const confirmed = await confirmDestructive({
+        title: 'Desinstalación',
+        lines: [
+          `Ámbito: ${scope ?? 'proyecto y global'}`,
+          ...scopedRows.map((row) => `${row.path}  ←  ${row.skills.length} skills`),
+          'También se quitará craft-orchestrator si craftkit lo instaló en este ámbito.',
+        ],
+      });
+      if (!confirmed) return;
+    }
+    const { removed } = await uninstall(ctx, { scope });
+    const agentRemoved = await uninstallOrchestrator(ctx, { scope });
     console.log(`Eliminados ${removed.length} skills y ${agentRemoved.length} agentes.`);
     return;
   }
@@ -90,6 +116,7 @@ async function main(argv) {
   }
 
   let { scope, agents, skills } = flags;
+  let isUpdate = false;
 
   if (command === 'update') {
     // `update` re-aplica la seleccion registrada: los agentes salen de los manifiestos,
@@ -104,6 +131,14 @@ async function main(argv) {
     // el otro sin avisar. Con --local/--global explicito nos quedamos solo con esas
     // filas, para no tocar el ambito que el usuario no pidio.
     const scopes = new Set(rows.map((r) => r.scope));
+    if (!scope && scopes.size > 1 && interactive) {
+      const { promptScope } = await import('./prompts.js');
+      scope = await promptScope({
+        scopes: [...scopes],
+        message: '¿Qué instalación quieres actualizar?',
+      });
+      if (scope === null) return;
+    }
     if (!scope && scopes.size > 1) {
       throw new Error(
         'craftkit esta instalado en mas de un ambito aqui (proyecto y global); ' +
@@ -123,34 +158,131 @@ async function main(argv) {
     if (agents.length === 0) {
       throw new Error('update: el manifiesto no registra ningun agente; pasa --agents explicitamente.');
     }
-    flags.withOrchestrator = flags.withOrchestrator || await hasOrchestrator(ctx, scope);
-    await uninstall(ctx, { scope });
-    await uninstallOrchestrator(ctx, { scope });
+    flags.withOrchestrator = flags.withOrchestrator ?? await hasOrchestrator(ctx, scope);
+    isUpdate = true;
   }
-  const interactive = process.stdin.isTTY && !flags.yes && (!agents || !scope);
+
   if (interactive) {
     const { detectAgents } = await import('./detect.js');
-    const { promptSetup, confirmPlan, done } = await import('./prompts.js');
+    const {
+      confirmDestructive, confirmInstall, done, promptSetup, renderPlan, startProgress,
+    } = await import('./prompts.js');
     const entries = await fs.readdir(sourceDir, { withFileTypes: true });
-    const answers = await promptSetup({
-      detected: await detectAgents(ctx),
-      availableSkills: entries.filter((e) => e.isDirectory()).map((e) => e.name).sort(),
-    });
-    if (answers === null) return;
-    ({ scope, agents, skills } = answers);
-    const plan = await planInstall({ ...ctx, scope, agents, skills, sourceDir, version });
-    if ((await confirmPlan(describe(plan))) === null) return;
-    await install({
-      ...ctx, scope, agents, skills, sourceDir, version,
-      mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
-    });
-    if (flags.withOrchestrator) await installOrchestrator({ ...ctx, scope, agents, agentSourceDir, dryRun: flags.dryRun, force: flags.force });
-    done('Listo.');
+    const availableSkills = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+
+    let plan;
+    let orchestratorPlan = [];
+    let orchestratorConflicts = [];
+    let updateForce = flags.force;
+    if (isUpdate) {
+      skills = skills ?? availableSkills;
+      plan = await planInstall({ ...ctx, scope, agents, skills, sourceDir, version });
+      orchestratorPlan = flags.withOrchestrator
+        ? planOrchestrator({ ...ctx, scope, agents, agentSourceDir })
+        : [];
+      orchestratorConflicts = flags.withOrchestrator
+        ? await planOrchestratorConflicts({ ...ctx, scope, agents, agentSourceDir })
+        : [];
+      const updateLines = renderPlan({
+        plan, mode: flags.mode ?? 'auto', orchestratorPlan, orchestratorConflicts,
+        withOrchestrator: flags.withOrchestrator, cwd: ctx.cwd,
+      });
+      if (flags.dryRun) {
+        const previewConfirmation = await confirmInstall({
+          lines: updateLines,
+          hasConflicts: plan.conflicts.length + orchestratorConflicts.length > 0,
+          force: flags.force,
+        });
+        if (previewConfirmation === null) return;
+        updateForce = previewConfirmation.force;
+      } else if (plan.conflicts.length + orchestratorConflicts.length > 0) {
+        const conflictConfirmation = await confirmInstall({
+          lines: updateLines,
+          hasConflicts: true,
+          force: flags.force,
+        });
+        if (conflictConfirmation === null) return;
+        updateForce = conflictConfirmation.force;
+      }
+      if (!flags.dryRun) {
+        const confirmed = await confirmDestructive({
+          title: 'Actualización',
+          lines: [
+            `Ámbito: ${scope}`,
+            `Agentes: ${agents.join(', ')}`,
+            'Se reemplazarán únicamente los archivos registrados por craftkit.',
+            '',
+            ...updateLines,
+          ],
+        });
+        if (!confirmed) return;
+        await uninstall(ctx, { scope });
+        await uninstallOrchestrator(ctx, { scope });
+      }
+    } else {
+      const answers = await promptSetup({
+        detected: await detectAgents(ctx),
+        availableSkills,
+        initial: {
+          scope,
+          agents,
+          skills,
+          mode: flags.mode,
+          withOrchestrator: flags.withOrchestrator === true ? true : undefined,
+        },
+      });
+      if (answers === null) return;
+      ({ scope, agents, skills } = answers);
+      flags.mode = answers.mode;
+      flags.withOrchestrator = answers.withOrchestrator;
+    }
+
+    if (!isUpdate) {
+      plan = await planInstall({ ...ctx, scope, agents, skills, sourceDir, version });
+      orchestratorPlan = flags.withOrchestrator
+        ? planOrchestrator({ ...ctx, scope, agents, agentSourceDir })
+        : [];
+      orchestratorConflicts = flags.withOrchestrator
+        ? await planOrchestratorConflicts({ ...ctx, scope, agents, agentSourceDir })
+        : [];
+    }
+    const confirmation = isUpdate
+      ? { force: updateForce }
+      : await confirmInstall({
+        lines: renderPlan({
+          plan, mode: flags.mode ?? 'auto', orchestratorPlan, orchestratorConflicts,
+          withOrchestrator: flags.withOrchestrator, cwd: ctx.cwd,
+        }),
+        hasConflicts: plan.conflicts.length + orchestratorConflicts.length > 0,
+        force: flags.force,
+      });
+    if (confirmation === null) return;
+    const spinner = startProgress(flags.dryRun ? 'Calculando el resultado…' : 'Instalando skills…');
+    try {
+      const result = await install({
+        ...ctx, scope, agents, skills, sourceDir, version,
+        mode: flags.mode, force: confirmation.force, dryRun: flags.dryRun,
+      });
+      if (flags.withOrchestrator) {
+        await installOrchestrator({
+          ...ctx, scope, agents, agentSourceDir, dryRun: flags.dryRun, force: confirmation.force,
+        });
+      }
+      spinner.stop(flags.dryRun ? 'Plan calculado.' : `Instalados ${result.applied.length} destinos.`);
+    } catch (err) {
+      spinner.stop('La instalación no se pudo completar.');
+      throw err;
+    }
+    done(flags.dryRun ? 'No se hicieron cambios.' : 'Listo. Ejecuta craftkit status para revisar la instalación.');
     return;
   }
 
   // Se llega aqui sin TTY o con --yes, asi que el mensaje no puede hablar solo de TTY.
   if (!agents) throw new Error('Modo no interactivo: --agents es obligatorio.');
+  if (isUpdate && !flags.dryRun) {
+    await uninstall(ctx, { scope });
+    await uninstallOrchestrator(ctx, { scope });
+  }
   const result = await install({
     ...ctx, scope: scope ?? 'project', agents, skills, sourceDir, version,
     mode: flags.mode, force: flags.force, dryRun: flags.dryRun,
@@ -159,31 +291,10 @@ async function main(argv) {
     const agentPlan = await installOrchestrator({ ...ctx, scope: scope ?? 'project', agents, agentSourceDir, dryRun: flags.dryRun, force: flags.force });
     for (const item of agentPlan) console.log(`${item.file}  <-  craft-orchestrator agent (${item.id})`);
   }
-  describe(result.plan).forEach((line) => console.log(line));
-}
-
-function describe(plan) {
-  const lines = plan.destinations.map(
-    (d) => `${d.path}  <-  ${d.skills.length} skills  (cubre: ${d.covers.join(', ')})`,
-  );
-  for (const id of plan.uncovered) {
-    // El aviso dependia del ambito de proyecto sin comprobarlo: en ambito global los
-    // agentes sin cobertura son otros (cursor, windsurf), que no tienen NINGUN
-    // directorio de skills global, asi que "usa --global" es un consejo que no lleva a
-    // ningun sitio. Cada ambito tiene su propio mensaje.
-    lines.push(
-      plan.scope === 'global'
-        ? `AVISO: ${id} no tiene directorio de skills global; solo lo cubre el bloque gestionado de AGENTS.md.`
-        : `AVISO: ${id} no admite skills en ámbito de proyecto; usa --global o confía en AGENTS.md.`,
-    );
-  }
-  for (const id of plan.duplicated) lines.push(`AVISO: ${id} cargaría los skills por duplicado.`);
-  // Silencio + exit 0 es justo el fallo que motivo esta ronda de revision (ver el guard
-  // del punto de entrada, mas abajo). Si el plan no genero ningun destino, decirlo.
-  if (plan.destinations.length === 0) {
-    lines.push('AVISO: no se instaló nada — ningún agente pedido tiene un destino de skills en este ámbito.');
-  }
-  return lines;
+  const { renderPlan } = await import('./prompts.js');
+  renderPlan({
+    plan: result.plan, mode: flags.mode ?? 'auto', withOrchestrator: flags.withOrchestrator, cwd: ctx.cwd,
+  }).forEach((line) => console.log(line));
 }
 
 // Bajo un bin enlazado por symlink -- lo que producen npx, `npm i -g` y `npm link` en
