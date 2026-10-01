@@ -50,6 +50,15 @@ test('workflow contracts and the skill template keep ordered, nonempty sections'
   }
 });
 
+test('craft-architect uses Ollaya when available and preserves its manual fallback', async () => {
+  const text = await fs.readFile(path.join(SKILLS, 'craft-architect', 'SKILL.md'), 'utf8');
+  assert.match(text, /Ollaya MCP `decide`/);
+  assert.match(text, /typed `choice` question/);
+  assert.match(text, /existing architecture rules remain authoritative/i);
+  assert.match(text, /If Ollaya MCP is unavailable/i);
+  assert.match(text, /unusable|inconclusive/i);
+});
+
 test('los cinco skills de flujo llevan prefijo craft-', async () => {
   const names = await dirs(SKILLS);
   assert.equal(names.filter((n) => n.startsWith('craft-')).length, 5);
